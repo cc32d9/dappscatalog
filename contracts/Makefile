@@ -2,6 +2,7 @@ CONTRACT=tokencatalog
 
 all: $(CONTRACT).abi $(CONTRACT).wast
 
+
 %.wast: %.cpp
 	eosiocpp -o $@ $^
 

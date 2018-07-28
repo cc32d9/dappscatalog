@@ -1,23 +1,30 @@
 #include "catalog.hpp"
 
+/// @abi table
+struct entry {
+  uint64_t      id;
+  account_name  code;
+  symbol_type   symbol;
+  string        title;
+  string        url;
+  string        descr;
+  uint64_t      flags;
 
-class tokencatalog : public catalog {
+  auto primary_key()const { return id; }
+  account_name get_code()const { return code; }
+
+  bool operator==( const entry& b ) {
+    return (this->code == b.code && this->symbol == b.symbol);
+  }
+
+};
+
+class tokencatalog : public catalog<entry> {
 public:
   tokencatalog( account_name self ):
-    catalog(self)
+    catalog<entry>(self)
   {}
 
-  /// @abi table
-  struct entry {
-    uint64_t      id;
-    name          owner;
-    symbol_type   symbol;
-    string        title;
-    string        url;
-    string        descr;
-    auto primary_key()const { return id; }
-    account_name get_owner()const { return owner; }
-  };
 
   void transferAction (uint64_t self, uint64_t code)
   {

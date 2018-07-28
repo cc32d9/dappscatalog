@@ -9,7 +9,7 @@ using namespace eosio;
 template<typename ENTRY>
 class catalog : public eosio::contract {
 public:
-  catalog<ENTRY>( account_name self ):
+  catalog( account_name self ):
     contract(self), _tagcloud(self, self), _prices(self, self),
     _entries(self, self)
   {}
@@ -17,7 +17,7 @@ public:
   typedef eosio::multi_index<N(entries), ENTRY,
     indexed_by<N(code), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_code>>> entries;
 
-  void pay_addentry( extended_asset payment, ENTRY& ent )
+  void pay_add_entry( const extended_asset& payment, const ENTRY& ent )
   {
     uint64_t exactprice = 0;
     
@@ -40,18 +40,24 @@ public:
     eosio_assert(payment.amount >= exactprice, "Payment amount is too low");
     eosio_assert(payment.amount == exactprice, "Payment amount is too high");
     
-    _entries.emplace(_self, [&]( auto& constrent ) {
-        constrent = ent;
+    _entries.emplace(_self, [&]( auto& ce ) {
+        ce = ent;
+        ce.id = _entries.available_primary_key();
       });
   }
 
-  void set_price(const account_name code, const symbol_type symbol,
-                 uint64_t pnewentry, uint64_t psubentry)
+  /// @abi action
+  void setprice(const account_name code,
+                const asset& price_newentry,
+                const asset& price_subentry)
   {
+    require_auth( _self );
+    eosio_assert(price_newentry.symbol == price_subentry.symbol,
+                 "Newentry and subentry prices are in different currency");
     auto codeidx = _prices.template get_index<N(code)>();
     auto itr = codeidx.lower_bound(code);
     while(itr != codeidx.end() && itr->code == code) {
-      if( itr->symbol == symbol ) {
+      if( itr->symbol == price_newentry.symbol ) {
         break;
       }
       itr++;
@@ -61,14 +67,14 @@ public:
       _prices.emplace(_self, [&]( auto& p ) {
           p.id = _prices.available_primary_key();
           p.code = code;
-          p.symbol = symbol;
-          p.pnewentry = pnewentry;
-          p.psubentry = psubentry;
+          p.symbol = price_newentry.symbol;
+          p.pnewentry = price_newentry.amount;
+          p.psubentry = price_subentry.amount;
         });
     } else {
       _prices.modify( *itr, _self, [&]( auto& p ) {
-          p.pnewentry = pnewentry;
-          p.psubentry = psubentry;
+          p.pnewentry = price_newentry.amount;
+          p.psubentry = price_subentry.amount;
         });
     }
   }

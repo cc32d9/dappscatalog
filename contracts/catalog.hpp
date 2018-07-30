@@ -111,7 +111,33 @@ public:
         });
     }
   }
-  
+
+  /// @abi action
+  void cleanup()
+  {
+    require_auth( _self );
+
+    {
+      auto itr = _prices.cbegin();
+      while( itr != _prices.cend() ) {
+        _prices.erase(itr);
+      }
+    }
+    {
+      auto itr = _tagcloud.cbegin();
+      while( itr != _tagcloud.cend() ) {
+        _tagcloud.erase(itr);
+      }
+    }
+    {
+      auto itr = _entries.cbegin();
+      while( itr != _entries.cend() ) {
+        _entries.erase(itr);
+      }
+    }    
+  }
+    
+
 private:
 
   /// @abi table

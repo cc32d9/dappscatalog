@@ -52,8 +52,7 @@ public:
     ent.symbol = data.memo;
     pay_add_entry(payment, ent);
   }
-
-
+    
   
 };
 
@@ -66,7 +65,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( tokencatalog, (setprice) );
+      EOSIO_API( tokencatalog, (setprice)(cleanup) );
     }                                       
   }
 }

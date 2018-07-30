@@ -7,6 +7,7 @@ struct entry {
   string        symbol;
   string        title;
   string        url;
+  string        email;
   string        descr;
   uint64_t      flags = 0;
 

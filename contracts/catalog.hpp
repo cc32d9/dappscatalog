@@ -14,7 +14,7 @@ public:
     _entries(self, self)
   {}
 
-  typedef eosio::multi_index<N(entries), ENTRY,
+  typedef eosio::multi_index<N(entry), ENTRY,
     indexed_by<N(code), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_code>>> entries;
 
   void pay_add_entry( const extended_asset& payment, const ENTRY& ent )
@@ -89,7 +89,7 @@ public:
     uint64_t get_entry_id()const { return entry_id; }
   };
 
-  typedef eosio::multi_index<N(tags), tag,
+  typedef eosio::multi_index<N(tag), tag,
     indexed_by<N(tag), const_mem_fun<tag, uint64_t, &tag::get_tag>>,
     indexed_by<N(entryid), const_mem_fun<tag, uint64_t, &tag::get_entry_id>>> tagcloud;
     
@@ -125,7 +125,7 @@ private:
     uint64_t get_code()const { return code; }
   };
 
-  typedef eosio::multi_index<N(prices), price,
+  typedef eosio::multi_index<N(price), price,
     indexed_by<N(code), const_mem_fun<price, uint64_t, &price::get_code>>> prices;
 
   const price& get_price_obj(const account_name code, const symbol_type symbol)

@@ -3,7 +3,7 @@
 /// @abi table
 struct entry {
   uint64_t      id;
-  account_name  code;
+  account_name  owner;
   string        symbol;
   string        title;
   string        url;
@@ -12,14 +12,14 @@ struct entry {
   uint64_t      flags = 0;
 
   auto primary_key()const { return id; }
-  account_name get_code()const { return code; }
+  account_name get_owner()const { return owner; }
 
   bool operator==( const entry& b ) const {
-    return (this->code == b.code && this->symbol == b.symbol);
+    return (this->owner == b.owner && this->symbol == b.symbol);
   }
 
   bool operator!=( const entry& b ) const {
-    return (this->code != b.code || this->symbol != b.symbol);
+    return (this->owner != b.owner || this->symbol != b.symbol);
   }
   
 };
@@ -47,13 +47,43 @@ public:
       eosio_assert('A' <= c && c <= 'Z', "Invalid character. A valid symbol name expected");
     }
     
-    entry ent;
-    ent.code = data.from;
-    ent.symbol = data.memo;
-    pay_add_entry(payment, ent);
+    entry e;
+    e.owner = data.from;
+    e.symbol = data.memo;
+    pay_add_entry(payment, e);
   }
-    
-  
+
+  /// @abi action
+  void setvalue (account_name owner, string symbol, name key, string value)
+  {
+    require_auth( owner );
+    eosio_assert( value.length() <= 1024, "Value is too long" );
+    entry e;
+    e.owner = owner;
+    e.symbol = symbol;
+    modify_entry( e, [&]( auto& ent ) {
+        switch(key) {
+        case N(title): ent.title = value;
+          break;
+        case N(url): ent.url = value;
+          break;
+        case N(email): ent.email = value;
+          break;
+        case N(descr): ent.descr = value;
+          break;
+        default: eosio_assert(0, "Unknown key name");
+        }});
+  }
+
+  /// @abi action
+  void setflag (account_name owner, string symbol, name flag)
+  {
+    require_auth( owner );
+    entry e;
+    e.owner = owner;
+    e.symbol = symbol;
+    set_entry_flag( e, flag );
+  }
 };
 
 
@@ -65,7 +95,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( tokencatalog, (setprice)(cleanup) );
+      EOSIO_API( tokencatalog, (setprice)(setvalue)(setflag)(refund) );
     }                                       
   }
 }

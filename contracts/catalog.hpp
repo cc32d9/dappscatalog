@@ -11,21 +11,21 @@ class catalog : public eosio::contract {
 public:
   catalog( account_name self ):
     contract(self), _tagcloud(self, self), _prices(self, self),
-    _entries(self, self)
+    _entries(self, self), _payments(self, self)
   {}
 
   typedef eosio::multi_index<N(entry), ENTRY,
-    indexed_by<N(code), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_code>>> entries;
+    indexed_by<N(owner), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_owner>>> entries;
 
   void pay_add_entry( const extended_asset& payment, const ENTRY& ent )
   {
     uint64_t exactprice = 0;
     
-    auto codeidx = _entries.template get_index<N(code)>();
-    auto itr = codeidx.lower_bound(ent.code);
-    if( itr != codeidx.end() ) {
+    auto owneridx = _entries.template get_index<N(owner)>();
+    auto itr = owneridx.lower_bound(ent.owner);
+    if( itr != owneridx.end() ) {
       // one entry exists. Assert that we don't have equal entries
-      while(itr != codeidx.end() && itr->code == ent.code) {
+      while(itr != owneridx.end() && itr->owner == ent.owner) {
         eosio_assert(*itr != ent, "The same entry already exists");
         itr++;
       }
@@ -44,8 +44,37 @@ public:
         ce = ent;
         ce.id = _entries.available_primary_key();
       });
+
+    // remember the payment for possible refunding
+    register_payment(ent.owner, payment);  
   }
 
+  
+  template<typename Lambda>
+  void modify_entry(const ENTRY& e, Lambda&& updater )
+  {
+    auto itr = get_entry(e);
+    _entries.modify( *itr, _self, std::forward<Lambda&&>(updater) );
+  }
+
+  
+  void set_entry_flag(const ENTRY& e, name flag)
+  {
+    auto itr = get_entry(e);
+    _entries.modify( *itr, _self, [&]( auto& ent ) {
+        switch(flag) {
+        case N(complete): ent.flags |= 1UL;
+          break;
+        case N(incomplete): ent.flags &= ~(1UL);
+          break;
+        case N(show): ent.flags |= 2UL;
+          break;
+        case N(hide): ent.flags &= ~(2UL);
+          break;
+        default: eosio_assert(0, "Unknown flag name");
+        }});
+  }    
+  
   /// @abi action
   void setprice(const account_name code,
                 const asset& price_newentry,
@@ -56,23 +85,22 @@ public:
                  "Newentry and subentry prices are in different currency");
     auto codeidx = _prices.template get_index<N(code)>();
     auto itr = codeidx.lower_bound(code);
-    while(itr != codeidx.end() && itr->code == code) {
-      if( itr->symbol == price_newentry.symbol ) {
-        break;
-      }
+    while(itr != codeidx.end() && itr->code == code &&
+          itr->symbol != price_newentry.symbol ) {
       itr++;
     }
 
-    if( itr == codeidx.end() ) {
-      _prices.emplace(_self, [&]( auto& p ) {
-          p.id = _prices.available_primary_key();
-          p.code = code;
-          p.symbol = price_newentry.symbol;
+    if( itr != codeidx.end() && itr->code == code &&
+        itr->symbol == price_newentry.symbol ) {
+      _prices.modify( *itr, _self, [&]( auto& p ) {
           p.pnewentry = price_newentry.amount;
           p.psubentry = price_subentry.amount;
         });
     } else {
-      _prices.modify( *itr, _self, [&]( auto& p ) {
+      _prices.emplace(_self, [&]( auto& p ) {
+          p.id = _prices.available_primary_key();
+          p.code = code;
+          p.symbol = price_newentry.symbol;
           p.pnewentry = price_newentry.amount;
           p.psubentry = price_subentry.amount;
         });
@@ -112,30 +140,44 @@ public:
     }
   }
 
+  
   /// @abi action
-  void cleanup()
+  void refund(account_name owner)
   {
-    require_auth( _self );
+    require_auth(owner);
 
-    {
-      auto itr = _prices.cbegin();
-      while( itr != _prices.cend() ) {
-        _prices.erase(itr);
+    // erase tagcloud and entries
+    auto entidx = _entries.template get_index<N(owner)>();
+    auto entitr = entidx.lower_bound(owner);
+    while(entitr != entidx.end() && entitr->owner == owner) {
+      uint64_t entry_id = entitr->id;
+      
+      auto tagidx = _tagcloud.template get_index<N(entryid)>();
+      auto tagitr = tagidx.lower_bound(entry_id);
+      while(tagitr != tagidx.end() && tagitr->entry_id == entry_id ) {
+        tagidx.erase(tagitr);
       }
+
+      entidx.erase(entitr);
     }
-    {
-      auto itr = _tagcloud.cbegin();
-      while( itr != _tagcloud.cend() ) {
-        _tagcloud.erase(itr);
-      }
+
+    // payback and erase payments
+    auto payidx = _payments.template get_index<N(owner)>();
+    auto payitr = payidx.lower_bound(owner);
+    while(payitr != payidx.end() && payitr->owner == owner ) {
+      action {
+        permission_level{_self, N(active)},
+          payitr->code,
+            N(transfer),
+            currency::transfer{
+            .from=_self,
+              .to=owner,
+              .quantity=asset{payitr->amount, payitr->symbol},
+              .memo="refund"}
+      }.send(); 
+      payidx.erase(payitr);
     }
-    {
-      auto itr = _entries.cbegin();
-      while( itr != _entries.cend() ) {
-        _entries.erase(itr);
-      }
-    }    
-  }
+  }      
     
 
 private:
@@ -168,10 +210,65 @@ private:
     eosio_assert(0, "Unknown currency name");
     return *itr;
   }
-    
+
+  auto get_entry(const ENTRY& ent)
+  {
+    auto owneridx = _entries.template get_index<N(owner)>();
+    auto itr = owneridx.lower_bound(ent.owner);
+    eosio_assert( itr != owneridx.end(), "Cannot find entry for this owner");
+                  
+    while(itr != owneridx.end() && itr->owner == ent.owner && *itr != ent ) {
+      itr++;
+    }
+
+    eosio_assert(*itr == ent, "Cannot find such item in entry table");
+    return itr;
+  }
+
+
+  /// @abi table
+  struct payment {
+    uint64_t       id;
+    account_name   owner;
+    account_name   code;
+    symbol_type    symbol;
+    int64_t        amount;
+    auto primary_key()const { return id; }
+    uint64_t get_owner()const { return owner; }
+  };
+
+  typedef eosio::multi_index<N(payment), payment,
+    indexed_by<N(owner), const_mem_fun<payment, uint64_t, &payment::get_owner>>> payments;
+
+  void register_payment(account_name owner, const extended_asset& payment)
+  {
+    auto owneridx = _payments.template get_index<N(owner)>();
+    auto itr = owneridx.lower_bound(owner);
+    while(itr != owneridx.end() && itr->owner == owner &&
+          itr->code != payment.contract && itr->symbol != payment.symbol ) {
+      itr++;
+    }
+
+    if( itr != owneridx.end() && itr->owner == owner &&
+        itr->code == payment.contract && itr->symbol == payment.symbol ) {
+      _payments.modify( *itr, _self, [&]( auto& p ) {
+          p.amount += payment.amount;
+        });
+    } else {
+      _payments.emplace(_self, [&]( auto& p ) {
+          p.id = _payments.available_primary_key();
+          p.owner = owner;
+          p.code = payment.contract;
+          p.symbol = payment.symbol;
+          p.amount = payment.amount;
+        });
+    }
+  }
+  
   prices _prices;
   tagcloud _tagcloud;
   entries _entries;
+  payments _payments;
 };
 
 

@@ -21,13 +21,8 @@ public:
 
   void pay_add_entry( const extended_asset& payment, const ENTRY& ent )
   {
-    // assert we don't have any pending refunds
-    auto payidx = _payments.template get_index<N(owner)>();
-    auto payitr = payidx.lower_bound(ent.owner);
-    while(payitr != payidx.end() && payitr->owner == ent.owner  ) {
-      eosio_assert(! payitr->torefund, "An unpaid refund is pending for this owner");
-      payitr++;
-    }
+    eosio_assert( !has_open_refund(ent.owner),
+                  "An unpaid refund is pending for this owner" );
 
     uint64_t exactprice = 0;    
     auto entidx = _entries.template get_index<N(owner)>();
@@ -153,7 +148,11 @@ public:
   void claimrefund(account_name owner)
   {
     require_auth(owner);
-    
+
+    eosio_assert( !has_open_refund(owner),
+                  "An unpaid refund is pending for this owner" );
+
+    bool found = false;
     // erase tagcloud and entries
     auto entidx = _entries.template get_index<N(owner)>();
     auto entitr = entidx.lower_bound(owner);
@@ -167,7 +166,10 @@ public:
       }
 
       entitr = entidx.erase(entitr);
+      found = true;
     }
+
+    eosio_assert(found, "No data found for this owner");
 
     // mark payments as refund pending
     auto payidx = _payments.template get_index<N(owner)>();
@@ -288,6 +290,22 @@ private:
         });
     }
   }
+
+  
+  bool has_open_refund(account_name owner)
+  {
+    auto payidx = _payments.template get_index<N(owner)>();
+    auto payitr = payidx.lower_bound(owner);
+    while(payitr != payidx.end() && payitr->owner == owner  ) {
+      if( payitr->torefund ) {
+        return true;
+      }
+      
+      payitr++;
+    }
+    return false;
+  }
+
   
   prices _prices;
   tagcloud _tagcloud;

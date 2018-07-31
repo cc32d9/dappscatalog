@@ -24,7 +24,9 @@ public:
     eosio_assert( !has_open_refund(ent.owner),
                   "An unpaid refund is pending for this owner" );
 
-    extended_asset exactprice;    
+    asset exactprice;
+    auto priceobj = get_price_obj(payment.contract, payment.symbol);
+    
     auto entidx = _entries.template get_index<N(owner)>();
     auto entitr = entidx.lower_bound(ent.owner);
     if( entitr != entidx.end() ) {
@@ -33,11 +35,10 @@ public:
         eosio_assert(*entitr != ent, "The same entry already exists");
         entitr++;
       }
-
-      exactprice = get_price_obj(payment.contract, payment.symbol).psubentry;
+      exactprice = priceobj.psubentry;
     }
     else {
-      exactprice = get_price_obj(payment.contract, payment.symbol).pnewentry;
+      exactprice = priceobj.pnewentry;
     }
 
     // check if the payment amount is right
@@ -82,24 +83,23 @@ public:
   }    
   
   /// @abi action
-  void setprice(const extended_asset& price_newentry,
-                const extended_asset& price_subentry)
+  void setprice(account_name contract,
+                const asset& price_newentry,
+                const asset& price_subentry)
   {
     require_auth( _self );
-    eosio_assert(price_newentry.contract == price_subentry.contract,
-                 "Newentry and subentry prices are in different contracts");
     eosio_assert(price_newentry.symbol == price_subentry.symbol,
                  "Newentry and subentry prices are in different currency");
-    auto codeidx = _prices.template get_index<N(code)>();
-    auto itr = codeidx.lower_bound(price_newentry.contract);
+    auto codeidx = _prices.template get_index<N(contract)>();
+    auto itr = codeidx.lower_bound(contract);
     while(itr != codeidx.end() &&
-          itr->pnewentry.contract == price_newentry.contract &&
+          itr->contract == contract &&
           itr->pnewentry.symbol != price_newentry.symbol ) {
       itr++;
     }
 
     if( itr != codeidx.end() &&
-        itr->pnewentry.contract == price_newentry.contract &&
+        itr->contract == contract &&
         itr->pnewentry.symbol == price_newentry.symbol ) {
       _prices.modify( *itr, _self, [&]( auto& p ) {
           p.pnewentry = price_newentry;
@@ -108,6 +108,7 @@ public:
     } else {
       _prices.emplace(_self, [&]( auto& p ) {
           p.id = _prices.available_primary_key();
+          p.contract = contract;
           p.pnewentry = price_newentry;
           p.psubentry = price_subentry;
         });
@@ -185,7 +186,7 @@ public:
     while(payitr != payidx.end() && payitr->owner == owner ) {
       _payments.modify( *payitr, _self, [&]( auto& p ) {
           p.torefund = true;
-          p.balance *= REFUND_RATE;
+          p.balance.amount *= REFUND_RATE;
         });
       payitr++;
     }
@@ -202,7 +203,8 @@ public:
     while(payitr != payidx.end() && payitr->owner == to ) {
       if( payitr->balance.contract == payment.contract &&
           payitr->balance.symbol == payment.symbol ) {
-        eosio_assert(payitr->balance == payment,
+          
+        eosio_assert(payitr->balance == payment || payitr->balance.amount == 0,
                      "Transfer amount is not the same as due to refund");
         payitr = payidx.erase(payitr);
       }
@@ -218,22 +220,23 @@ private:
   /// @abi table
   struct price {
     uint64_t       id;
-    extended_asset pnewentry;
-    extended_asset psubentry;
+    account_name   contract;
+    asset          pnewentry;
+    asset          psubentry;
     auto primary_key()const { return id; }
-    uint64_t get_code()const { return pnewentry.contract; }
+    uint64_t get_contract()const { return contract; }
   };
   
 
   typedef eosio::multi_index<N(price), price,
-    indexed_by<N(code), const_mem_fun<price, uint64_t, &price::get_code>>> prices;
+    indexed_by<N(contract), const_mem_fun<price, uint64_t, &price::get_contract>>> prices;
 
-  const price& get_price_obj(const account_name code, const symbol_type symbol)
+  const price& get_price_obj(const account_name contract, const symbol_type symbol)
   {
-    auto codeidx = _prices.template get_index<N(code)>();
-    auto itr = codeidx.lower_bound(code);
-    eosio_assert(itr != codeidx.end(), "Unknown currency issuer");
-    while( itr->pnewentry.contract == code ) {
+    auto contractidx = _prices.template get_index<N(contract)>();
+    auto itr = contractidx.lower_bound(contract);
+    eosio_assert(itr != contractidx.end(), "Unknown currency issuer");
+    while( itr->contract == contract ) {
       if( itr->pnewentry.symbol == symbol ) {
         return *itr;
       }

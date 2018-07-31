@@ -95,7 +95,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( tokencatalog, (setprice)(setvalue)(setflag)(refund) );
+      EOSIO_API( tokencatalog, (setprice)(setvalue)(setflag)(claimrefund)(refund) );
     }                                       
   }
 }

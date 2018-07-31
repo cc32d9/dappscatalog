@@ -19,15 +19,22 @@ public:
 
   void pay_add_entry( const extended_asset& payment, const ENTRY& ent )
   {
-    uint64_t exactprice = 0;
-    
-    auto owneridx = _entries.template get_index<N(owner)>();
-    auto itr = owneridx.lower_bound(ent.owner);
-    if( itr != owneridx.end() ) {
+    // assert we don't have any pending refunds
+    auto payidx = _payments.template get_index<N(owner)>();
+    auto payitr = payidx.lower_bound(ent.owner);
+    while(payitr != payidx.end() && payitr->owner == ent.owner  ) {
+      eosio_assert(! payitr->torefund, "An unpaid refund is pending for this owner");
+      payitr++;
+    }
+
+    uint64_t exactprice = 0;    
+    auto entidx = _entries.template get_index<N(owner)>();
+    auto entitr = entidx.lower_bound(ent.owner);
+    if( entitr != entidx.end() ) {
       // one entry exists. Assert that we don't have equal entries
-      while(itr != owneridx.end() && itr->owner == ent.owner) {
-        eosio_assert(*itr != ent, "The same entry already exists");
-        itr++;
+      while(entitr != entidx.end() && entitr->owner == ent.owner) {
+        eosio_assert(*entitr != ent, "The same entry already exists");
+        entitr++;
       }
 
       exactprice = get_price_obj(payment.contract, payment.symbol).psubentry;
@@ -53,15 +60,15 @@ public:
   template<typename Lambda>
   void modify_entry(const ENTRY& e, Lambda&& updater )
   {
-    auto itr = get_entry(e);
-    _entries.modify( *itr, _self, std::forward<Lambda&&>(updater) );
+    auto entitr = get_entry(e);
+    _entries.modify( *entitr, _self, std::forward<Lambda&&>(updater) );
   }
 
   
   void set_entry_flag(const ENTRY& e, name flag)
   {
-    auto itr = get_entry(e);
-    _entries.modify( *itr, _self, [&]( auto& ent ) {
+    auto entitr = get_entry(e);
+    _entries.modify( *entitr, _self, [&]( auto& ent ) {
         switch(flag) {
         case N(complete): ent.flags |= 1UL;
           break;
@@ -127,7 +134,7 @@ public:
     auto tagidx = _tagcloud.template get_index<N(entryid)>();
     auto itr = tagidx.lower_bound(entry_id);
     while(itr != tagidx.end() && itr->entry_id == entry_id ) {
-      tagidx.erase(itr);
+      itr = tagidx.erase(itr);
       itr++;
     }
     
@@ -142,43 +149,64 @@ public:
 
   
   /// @abi action
-  void refund(account_name owner)
+  void claimrefund(account_name owner)
   {
     require_auth(owner);
-
+    
     // erase tagcloud and entries
     auto entidx = _entries.template get_index<N(owner)>();
     auto entitr = entidx.lower_bound(owner);
     while(entitr != entidx.end() && entitr->owner == owner) {
       uint64_t entry_id = entitr->id;
-      
+
       auto tagidx = _tagcloud.template get_index<N(entryid)>();
       auto tagitr = tagidx.lower_bound(entry_id);
       while(tagitr != tagidx.end() && tagitr->entry_id == entry_id ) {
-        tagidx.erase(tagitr);
+        tagitr = tagidx.erase(tagitr);
       }
 
-      entidx.erase(entitr);
+      entitr = entidx.erase(entitr);
     }
 
-    // payback and erase payments
+    // mark payments as refund pending
     auto payidx = _payments.template get_index<N(owner)>();
     auto payitr = payidx.lower_bound(owner);
     while(payitr != payidx.end() && payitr->owner == owner ) {
-      action {
-        permission_level{_self, N(active)},
-          payitr->code,
-            N(transfer),
-            currency::transfer{
-            .from=_self,
-              .to=owner,
-              .quantity=asset{payitr->amount, payitr->symbol},
-              .memo="refund"}
-      }.send(); 
-      payidx.erase(payitr);
+      _payments.modify( *payitr, _self, [&]( auto& p ) {
+          p.torefund = true;
+        });
+      payitr++;
+    }
+  }
+
+  
+  /// @abi action
+  void refund()
+  {
+    require_auth2(_self, N(active));
+  
+    // payback and erase payments
+    auto payitr = _payments.begin();
+    while( payitr != _payments.end() ) {
+      if( payitr->torefund ) {
+        action {
+          permission_level{_self, N(active)},
+            payitr->code,
+              N(transfer),
+              currency::transfer{
+              .from=_self,
+                .to=payitr->owner,
+                .quantity=asset{payitr->amount, payitr->symbol},
+                .memo="refund"}
+        }.send();
+        payitr = _payments.erase(payitr);
+      }
+      else {
+        payitr++;
+      }
     }
   }      
-    
+  
 
 private:
 
@@ -213,11 +241,11 @@ private:
 
   auto get_entry(const ENTRY& ent)
   {
-    auto owneridx = _entries.template get_index<N(owner)>();
-    auto itr = owneridx.lower_bound(ent.owner);
-    eosio_assert( itr != owneridx.end(), "Cannot find entry for this owner");
+    auto entidx = _entries.template get_index<N(owner)>();
+    auto itr = entidx.lower_bound(ent.owner);
+    eosio_assert( itr != entidx.end(), "Cannot find entry for this owner");
                   
-    while(itr != owneridx.end() && itr->owner == ent.owner && *itr != ent ) {
+    while(itr != entidx.end() && itr->owner == ent.owner && *itr != ent ) {
       itr++;
     }
 
@@ -233,6 +261,7 @@ private:
     account_name   code;
     symbol_type    symbol;
     int64_t        amount;
+    bool           torefund = false;
     auto primary_key()const { return id; }
     uint64_t get_owner()const { return owner; }
   };
@@ -242,16 +271,16 @@ private:
 
   void register_payment(account_name owner, const extended_asset& payment)
   {
-    auto owneridx = _payments.template get_index<N(owner)>();
-    auto itr = owneridx.lower_bound(owner);
-    while(itr != owneridx.end() && itr->owner == owner &&
-          itr->code != payment.contract && itr->symbol != payment.symbol ) {
-      itr++;
+    auto payidx = _payments.template get_index<N(owner)>();
+    auto payitr = payidx.lower_bound(owner);
+    while(payitr != payidx.end() && payitr->owner == owner &&
+          payitr->code != payment.contract && payitr->symbol != payment.symbol ) {
+      payitr++;
     }
 
-    if( itr != owneridx.end() && itr->owner == owner &&
-        itr->code == payment.contract && itr->symbol == payment.symbol ) {
-      _payments.modify( *itr, _self, [&]( auto& p ) {
+    if( payitr != payidx.end() && payitr->owner == owner &&
+        payitr->code == payment.contract && payitr->symbol == payment.symbol ) {
+      _payments.modify( *payitr, _self, [&]( auto& p ) {
           p.amount += payment.amount;
         });
     } else {

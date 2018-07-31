@@ -14,6 +14,8 @@ public:
     _entries(self, self), _payments(self, self)
   {}
 
+  const float REFUND_RATE = 0.9;
+  
   typedef eosio::multi_index<N(entry), ENTRY,
     indexed_by<N(owner), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_owner>>> entries;
 
@@ -132,10 +134,9 @@ public:
   {
     // delete all tags for an entry
     auto tagidx = _tagcloud.template get_index<N(entryid)>();
-    auto itr = tagidx.lower_bound(entry_id);
-    while(itr != tagidx.end() && itr->entry_id == entry_id ) {
-      itr = tagidx.erase(itr);
-      itr++;
+    auto tagitr = tagidx.lower_bound(entry_id);
+    while(tagitr != tagidx.end() && tagitr->entry_id == entry_id ) {
+      tagitr = tagidx.erase(tagitr);
     }
     
     for( name tag : tags ) {
@@ -174,32 +175,26 @@ public:
     while(payitr != payidx.end() && payitr->owner == owner ) {
       _payments.modify( *payitr, _self, [&]( auto& p ) {
           p.torefund = true;
+          p.amount *= REFUND_RATE;
         });
       payitr++;
     }
   }
 
   
-  /// @abi action
-  void refund()
-  {
-    require_auth2(_self, N(active));
   
-    // payback and erase payments
-    auto payitr = _payments.begin();
-    while( payitr != _payments.end() ) {
-      if( payitr->torefund ) {
-        action {
-          permission_level{_self, N(active)},
-            payitr->code,
-              N(transfer),
-              currency::transfer{
-              .from=_self,
-                .to=payitr->owner,
-                .quantity=asset{payitr->amount, payitr->symbol},
-                .memo="refund"}
-        }.send();
-        payitr = _payments.erase(payitr);
+  void refund(account_name to, const extended_asset& payment)
+  {
+    require_auth(_self);
+
+    auto payidx = _payments.template get_index<N(owner)>();
+    auto payitr = payidx.lower_bound(to);
+    while(payitr != payidx.end() && payitr->owner == to ) {
+      if( payitr->code == payment.contract &&
+          payitr->symbol == payment.symbol ) {
+        eosio_assert(payitr->amount == payment.amount,
+                     "Transfer amount is not the same as due to refund");
+        payitr = payidx.erase(payitr);
       }
       else {
         payitr++;

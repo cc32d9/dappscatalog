@@ -33,12 +33,13 @@ public:
   void transferAction (uint64_t code)
   {
     auto data = unpack_action_data<currency::transfer>();
-    if(data.from == _self || data.to != _self) {
-      return;
-    }
-
     eosio_assert(data.quantity.is_valid(), "Invalid quantity");
     extended_asset payment(data.quantity, code);
+
+    if(data.from == _self) {
+      refund(data.to, payment);
+      return;
+    }
     
     eosio_assert(data.memo.length() > 0, "Empty memo. A symbol name expected");
     eosio_assert(data.memo.length() <= 7, "memo is too long. A symbol name expected");
@@ -95,7 +96,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( tokencatalog, (setprice)(setvalue)(setflag)(claimrefund)(refund) );
+      EOSIO_API( tokencatalog, (setprice)(setvalue)(setflag)(claimrefund) );
     }                                       
   }
 }

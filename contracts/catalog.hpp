@@ -24,7 +24,7 @@ public:
     eosio_assert( !has_open_refund(ent.owner),
                   "An unpaid refund is pending for this owner" );
 
-    uint64_t exactprice = 0;    
+    extended_asset exactprice;    
     auto entidx = _entries.template get_index<N(owner)>();
     auto entitr = entidx.lower_bound(ent.owner);
     if( entitr != entidx.end() ) {
@@ -41,8 +41,8 @@ public:
     }
 
     // check if the payment amount is right
-    eosio_assert(payment.amount >= exactprice, "Payment amount is too low");
-    eosio_assert(payment.amount == exactprice, "Payment amount is too high");
+    eosio_assert(payment >= exactprice, "Payment amount is too low");
+    eosio_assert(payment == exactprice, "Payment amount is too high");
     
     _entries.emplace(_self, [&]( auto& ce ) {
         ce = ent;
@@ -82,33 +82,34 @@ public:
   }    
   
   /// @abi action
-  void setprice(const account_name code,
-                const asset& price_newentry,
-                const asset& price_subentry)
+  void setprice(const extended_asset& price_newentry,
+                const extended_asset& price_subentry)
   {
     require_auth( _self );
+    eosio_assert(price_newentry.contract == price_subentry.contract,
+                 "Newentry and subentry prices are in different contracts");
     eosio_assert(price_newentry.symbol == price_subentry.symbol,
                  "Newentry and subentry prices are in different currency");
     auto codeidx = _prices.template get_index<N(code)>();
-    auto itr = codeidx.lower_bound(code);
-    while(itr != codeidx.end() && itr->code == code &&
-          itr->symbol != price_newentry.symbol ) {
+    auto itr = codeidx.lower_bound(price_newentry.contract);
+    while(itr != codeidx.end() &&
+          itr->pnewentry.contract == price_newentry.contract &&
+          itr->pnewentry.symbol != price_newentry.symbol ) {
       itr++;
     }
 
-    if( itr != codeidx.end() && itr->code == code &&
-        itr->symbol == price_newentry.symbol ) {
+    if( itr != codeidx.end() &&
+        itr->pnewentry.contract == price_newentry.contract &&
+        itr->pnewentry.symbol == price_newentry.symbol ) {
       _prices.modify( *itr, _self, [&]( auto& p ) {
-          p.pnewentry = price_newentry.amount;
-          p.psubentry = price_subentry.amount;
+          p.pnewentry = price_newentry;
+          p.psubentry = price_subentry;
         });
     } else {
       _prices.emplace(_self, [&]( auto& p ) {
           p.id = _prices.available_primary_key();
-          p.code = code;
-          p.symbol = price_newentry.symbol;
-          p.pnewentry = price_newentry.amount;
-          p.psubentry = price_subentry.amount;
+          p.pnewentry = price_newentry;
+          p.psubentry = price_subentry;
         });
     }
   }
@@ -184,7 +185,7 @@ public:
     while(payitr != payidx.end() && payitr->owner == owner ) {
       _payments.modify( *payitr, _self, [&]( auto& p ) {
           p.torefund = true;
-          p.amount *= REFUND_RATE;
+          p.balance *= REFUND_RATE;
         });
       payitr++;
     }
@@ -199,9 +200,9 @@ public:
     auto payidx = _payments.template get_index<N(owner)>();
     auto payitr = payidx.lower_bound(to);
     while(payitr != payidx.end() && payitr->owner == to ) {
-      if( payitr->code == payment.contract &&
-          payitr->symbol == payment.symbol ) {
-        eosio_assert(payitr->amount == payment.amount,
+      if( payitr->balance.contract == payment.contract &&
+          payitr->balance.symbol == payment.symbol ) {
+        eosio_assert(payitr->balance == payment,
                      "Transfer amount is not the same as due to refund");
         payitr = payidx.erase(payitr);
       }
@@ -217,12 +218,10 @@ private:
   /// @abi table
   struct price {
     uint64_t       id;
-    account_name   code;
-    symbol_type    symbol;
-    uint64_t       pnewentry;
-    uint64_t       psubentry;
+    extended_asset pnewentry;
+    extended_asset psubentry;
     auto primary_key()const { return id; }
-    uint64_t get_code()const { return code; }
+    uint64_t get_code()const { return pnewentry.contract; }
   };
   
 
@@ -234,8 +233,8 @@ private:
     auto codeidx = _prices.template get_index<N(code)>();
     auto itr = codeidx.lower_bound(code);
     eosio_assert(itr != codeidx.end(), "Unknown currency issuer");
-    while(itr->code == code) {
-      if( itr->symbol == symbol ) {
+    while( itr->pnewentry.contract == code ) {
+      if( itr->pnewentry.symbol == symbol ) {
         return *itr;
       }
       itr++;
@@ -263,38 +262,41 @@ private:
   struct payment {
     uint64_t       id;
     account_name   owner;
-    account_name   code;
-    symbol_type    symbol;
-    int64_t        amount;
+    extended_asset balance;
     bool           torefund = false;
     auto primary_key()const { return id; }
     uint64_t get_owner()const { return owner; }
+    uint64_t get_refund()const { return torefund?1:0; }
   };
 
   typedef eosio::multi_index<N(payment), payment,
-    indexed_by<N(owner), const_mem_fun<payment, uint64_t, &payment::get_owner>>> payments;
+    indexed_by<N(owner), const_mem_fun<payment, uint64_t, &payment::get_owner>>,
+    indexed_by<N(refund), const_mem_fun<payment, uint64_t, &payment::get_refund>>> payments;
 
+  
   void register_payment(account_name owner, const extended_asset& payment)
   {
     auto payidx = _payments.template get_index<N(owner)>();
     auto payitr = payidx.lower_bound(owner);
-    while(payitr != payidx.end() && payitr->owner == owner &&
-          payitr->code != payment.contract && payitr->symbol != payment.symbol ) {
+    while(payitr != payidx.end() &&
+          payitr->owner == owner &&
+          payitr->balance.contract != payment.contract &&
+          payitr->balance.symbol != payment.symbol ) {
       payitr++;
     }
 
-    if( payitr != payidx.end() && payitr->owner == owner &&
-        payitr->code == payment.contract && payitr->symbol == payment.symbol ) {
+    if( payitr != payidx.end() &&
+        payitr->owner == owner &&
+        payitr->balance.contract == payment.contract &&
+        payitr->balance.symbol == payment.symbol ) {
       _payments.modify( *payitr, _self, [&]( auto& p ) {
-          p.amount += payment.amount;
+          p.balance += payment;
         });
     } else {
       _payments.emplace(_self, [&]( auto& p ) {
           p.id = _payments.available_primary_key();
           p.owner = owner;
-          p.code = payment.contract;
-          p.symbol = payment.symbol;
-          p.amount = payment.amount;
+          p.balance = payment;
         });
     }
   }

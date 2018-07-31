@@ -31,6 +31,8 @@ public:
     catalog<entry>(self)
   {}
 
+  const int MAX_VALUE_LEN = 1024;
+  
   void transferAction (uint64_t code)
   {
     auto data = unpack_action_data<currency::transfer>();
@@ -59,26 +61,62 @@ public:
   void setvalue (account_name owner, string symbol, name key, string value)
   {
     require_auth( owner );
-    eosio_assert( value.length() <= 1024, "Value is too long" );
+    eosio_assert( value.length() <= MAX_VALUE_LEN, "Value is too long" );
     entry e;
     e.owner = owner;
     e.symbol = symbol;
     modify_entry( e, [&]( auto& ent ) {
         switch(key) {
-        case N(title): ent.title = value;
+        case N(title):   ent.title = value;
           break;
-        case N(org): ent.org = value;
+        case N(org):     ent.org = value;
           break;
-        case N(url): ent.url = value;
+        case N(url):     ent.url = value;
           break;
-        case N(email): ent.email = value;
+        case N(email):   ent.email = value;
           break;
-        case N(descr): ent.descr = value;
+        case N(descr):   ent.descr = value;
           break;
         default: eosio_assert(0, "Unknown key name");
         }});
   }
 
+  struct keyval {
+    name     key;
+    string   value;
+  };
+    
+  /// @abi action
+  void setvalues (account_name owner, string symbol, vector<keyval> values)
+  {
+    require_auth( owner );
+    for(auto kv: values) {
+      eosio_assert( kv.value.length() <= MAX_VALUE_LEN, "Value is too long" );
+    }
+
+    entry e;
+    e.owner = owner;
+    e.symbol = symbol;
+    modify_entry( e, [&]( auto& ent ) {
+        for(auto kv: values) {
+          switch(kv.key) {
+          case N(title):    ent.title = kv.value;
+            break;
+          case N(org):      ent.org = kv.value;
+            break;
+          case N(url):      ent.url = kv.value;
+            break;
+          case N(email):    ent.email = kv.value;
+            break;
+          case N(descr):    ent.descr = kv.value;
+            break;
+          default: eosio_assert(0, "Unknown key name");
+          }
+        }
+      });
+  }
+  
+  
   /// @abi action
   void settags (account_name owner, string symbol, vector<name>& tags)
   {
@@ -99,6 +137,7 @@ public:
     e.symbol = symbol;
     set_entry_flag( e, flag );
   }
+  
 };
 
 
@@ -110,7 +149,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( tokencatalog, (setprice)(setvalue)(settags)(setflag)(claimrefund) );
+      EOSIO_API( tokencatalog, (setprice)(setvalue)(setvalues)(settags)(setflag)(claimrefund) );
     }                                       
   }
 }

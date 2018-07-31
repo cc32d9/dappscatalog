@@ -12,6 +12,10 @@ cleos -u http://rpc.eoswatch.info:9000 transfer tsttoken11 tokencatalog "5.0000 
 # Set the title string
 cleos -u http://rpc.eoswatch.info:9000 push action tokencatalog setvalue '["tsttoken11", "TESTA", "title", "blah blah xxx"]' -p tsttoken11
 
+# Set multiple fields in one go
+cleos -u http://rpc.eoswatch.info:9000 push action tokencatalog setvalues '["tsttoken11", "TESTA", [["title", "blah blah xxx lorem ipsum"],["org", "Lorem Ipsomania"]]]' -p tsttoken11
+
+
 # Set the tags for tag cloud
 cleos -u http://rpc.eoswatch.info:9000 push action tokencatalog settags '["tsttoken11", "TESTA", ["gaga","gugu", "gogo"]]' -p tsttoken11
 

@@ -77,6 +77,17 @@ public:
   }
 
   /// @abi action
+  void settags (account_name owner, string symbol, vector<name>& tags)
+  {
+    require_auth( owner );
+    entry e;
+    e.owner = owner;
+    e.symbol = symbol;
+    set_entry_tags( e, tags );
+  }
+
+  
+  /// @abi action
   void setflag (account_name owner, string symbol, name flag)
   {
     require_auth( owner );
@@ -96,7 +107,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( tokencatalog, (setprice)(setvalue)(setflag)(claimrefund) );
+      EOSIO_API( tokencatalog, (setprice)(setvalue)(settags)(setflag)(claimrefund) );
     }                                       
   }
 }

@@ -67,6 +67,8 @@ public:
     auto entitr = get_entry(e);
     _entries.modify( *entitr, _self, [&]( auto& ent ) {
         switch(flag) {
+        case N(ready): ent.flags |= 3UL;
+          break;
         case N(complete): ent.flags |= 1UL;
           break;
         case N(incomplete): ent.flags &= ~(1UL);
@@ -75,7 +77,7 @@ public:
           break;
         case N(hide): ent.flags &= ~(2UL);
           break;
-        default: eosio_assert(0, "Unknown flag name");
+        default: eosio_assert(0, "Wrong flag name. Expected ready|complete|incomplete|show|hide");
         }});
   }    
   
@@ -124,9 +126,14 @@ public:
   typedef eosio::multi_index<N(tag), tag,
     indexed_by<N(tag), const_mem_fun<tag, uint64_t, &tag::get_tag>>,
     indexed_by<N(entryid), const_mem_fun<tag, uint64_t, &tag::get_entry_id>>> tagcloud;
-    
-  void set_tags(uint64_t entry_id, vector<name> tags)
+
+  
+ 
+  void set_entry_tags(const ENTRY& e, const vector<name>& tags)
   {
+    auto entitr = get_entry(e);
+    auto entry_id = entitr->id;
+    
     // delete all tags for an entry
     auto tagidx = _tagcloud.template get_index<N(entryid)>();
     auto tagitr = tagidx.lower_bound(entry_id);
@@ -217,6 +224,7 @@ private:
     auto primary_key()const { return id; }
     uint64_t get_code()const { return code; }
   };
+  
 
   typedef eosio::multi_index<N(price), price,
     indexed_by<N(code), const_mem_fun<price, uint64_t, &price::get_code>>> prices;

@@ -6,6 +6,7 @@ struct entry {
   account_name  owner;
   string        symbol;
   string        title;
+  string        org;
   string        url;
   string        email;
   string        descr;
@@ -65,6 +66,8 @@ public:
     modify_entry( e, [&]( auto& ent ) {
         switch(key) {
         case N(title): ent.title = value;
+          break;
+        case N(org): ent.org = value;
           break;
         case N(url): ent.url = value;
           break;

@@ -30,3 +30,15 @@ cleos -u http://rpc.eoswatch.info:9000 push action tokencatalog setflag '["tstto
 cleos -u http://rpc.eoswatch.info:9000 push action tokencatalog claimrefund '["tsttoken11"]' -p tsttoken11
 
 ```
+
+
+## Quering the data
+
+```
+# all tags starting with "gogo"
+cleos -u http://rpc.eoswatch.info:9000 get table tokencatalog tokencatalog tag --index 2 --key-type name --lower=gogo 
+
+# get entry with ID=1
+cleos -u http://rpc.eoswatch.info:9000 get table tokencatalog tokencatalog entry  --index 1 --key-type i64 --lower=1 --limit=1
+
+```

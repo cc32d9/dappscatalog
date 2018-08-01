@@ -499,3 +499,6 @@ SYS balances:
 producers:     <not voted>
 ```
 
+```
+cleos -u http://rpc.eoswatch.info:9000 set account permission tokencataxxx active '{"threshold": 1, "keys":[{"key":"EOS8C9tb8QQhZet6WWcYFCWDKHYfjC3W59ugHCD63s7LLDQx6JsNK", "weight":1}] , "accounts":[{"permission":{"actor":"tokencataxxx","permission":"eosio.code"},"weight":1}], "waits":[] }' owner -p tokencataxxx
+```

@@ -15,6 +15,8 @@ public:
   {}
 
   const float REFUND_RATE = 0.9;
+  const int MAX_TAGS = 10;
+  bool autorefund = true;
   
   typedef eosio::multi_index<N(entry), ENTRY,
     indexed_by<N(owner), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_owner>>> entries;
@@ -42,15 +44,16 @@ public:
     
     auto entidx = _entries.template get_index<N(owner)>();
     auto entitr = entidx.lower_bound(ent.owner);
-    if( entitr != entidx.end() ) {
-      // one entry exists. Assert that we don't have equal entries
-      while(entitr != entidx.end() && entitr->owner == ent.owner) {
-        eosio_assert(*entitr != ent, "The same entry already exists");
-        entitr++;
-      }
-      exactprice = priceobj.psubentry;
+    bool found = false;
+    while(entitr != entidx.end() && entitr->owner == ent.owner) {
+      found = true;
+      eosio_assert(*entitr != ent, "The same entry already exists");
+      entitr++;
     }
-    else {
+
+    if( found ) {
+      exactprice = priceobj.psubentry;
+    } else {
       exactprice = priceobj.pnewentry;
     }
 
@@ -146,6 +149,7 @@ public:
  
   void set_entry_tags(const ENTRY& e, const vector<name>& tags)
   {
+    eosio_assert(tags.size() <= MAX_TAGS, "Too many tags");
     auto entitr = get_entry(e);
     auto entry_id = entitr->id;
     
@@ -156,7 +160,7 @@ public:
       tagitr = tagidx.erase(tagitr);
     }
     
-    for( name tag : tags ) {
+    for( name tag : tags ) {      
       _tagcloud.emplace(_self, [&]( auto& p ) {
           p.id = _tagcloud.available_primary_key();
           p.entry_id = entry_id;
@@ -201,6 +205,25 @@ public:
           p.balance.amount *= REFUND_RATE;
         });
       payitr++;
+    }
+   
+    // perform payback automatically
+    if( autorefund ) {
+      payitr = payidx.lower_bound(owner);
+      while(payitr != payidx.end() && payitr->owner == owner ) {
+        action
+          {
+            permission_level{_self, N(active)},
+              payitr->balance.contract,
+                N(transfer),
+                currency::transfer
+                  {
+                    .from=_self, .to=owner,
+                      .quantity=payitr->balance, .memo="Refundment as requested"
+                      }
+          }.send(); 
+        payitr++;
+      }
     }
   }
 

@@ -19,6 +19,19 @@ public:
   typedef eosio::multi_index<N(entry), ENTRY,
     indexed_by<N(owner), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_owner>>> entries;
 
+  bool entry_exists( const ENTRY& ent )
+  {
+    auto entidx = _entries.template get_index<N(owner)>();
+    auto entitr = entidx.lower_bound(ent.owner);
+    while(entitr != entidx.end() && entitr->owner == ent.owner) {
+      if( *entitr == ent ) {
+        return true;
+      }
+      entitr++;
+    }
+    return false;
+  }
+    
   void pay_add_entry( const extended_asset& payment, const ENTRY& ent )
   {
     eosio_assert( !has_open_refund(ent.owner),
@@ -157,7 +170,6 @@ public:
   void claimrefund(account_name owner)
   {
     require_auth(owner);
-
     eosio_assert( !has_open_refund(owner),
                   "An unpaid refund is pending for this owner" );
 
@@ -249,15 +261,15 @@ private:
   auto get_entry(const ENTRY& ent)
   {
     auto entidx = _entries.template get_index<N(owner)>();
-    auto itr = entidx.lower_bound(ent.owner);
-    eosio_assert( itr != entidx.end(), "Cannot find entry for this owner");
+    auto entitr = entidx.lower_bound(ent.owner);
+    eosio_assert( entitr != entidx.end(), "Cannot find entry for this owner");
                   
-    while(itr != entidx.end() && itr->owner == ent.owner && *itr != ent ) {
-      itr++;
+    while(entitr != entidx.end() && entitr->owner == ent.owner && *entitr != ent ) {
+      entitr++;
     }
 
-    eosio_assert(*itr == ent, "Cannot find such item in entry table");
-    return itr;
+    eosio_assert(*entitr == ent, "Cannot find such item in entry table");
+    return entitr;
   }
 
 

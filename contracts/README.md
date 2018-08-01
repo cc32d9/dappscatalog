@@ -29,6 +29,9 @@ cleos -u http://rpc.eoswatch.info:9000 push action tokencatalog setflag '["tstto
 # show again in the listing
 cleos -u http://rpc.eoswatch.info:9000 push action tokencatalog setflag '["tsttoken11", "TESTA", "show"]' -p tsttoken11
 
+# Modify the token name
+cleos -u http://rpc.eoswatch.info:9000 push action tokencatalog modsymbol '["tsttoken11", "TESTA", "TESTX"]' -p tsttoken11
+
 
 # erase entries and claim money back
 cleos -u http://rpc.eoswatch.info:9000 push action tokencatalog claimrefund '["tsttoken11"]' -p tsttoken11

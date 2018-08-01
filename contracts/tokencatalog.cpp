@@ -45,11 +45,7 @@ public:
     }
     
     eosio_assert(data.memo.length() > 0, "Empty memo. A symbol name expected");
-    eosio_assert(data.memo.length() <= 7, "memo is too long. A symbol name expected");
-    for( int i = 0; i < data.memo.length(); i++ ) {
-      char c = data.memo[i];
-      eosio_assert('A' <= c && c <= 'Z', "Invalid character. A valid symbol name expected");
-    }
+    verify_symbol_str(data.memo);
     
     entry e;
     e.owner = data.from;
@@ -57,7 +53,18 @@ public:
     pay_add_entry(payment, e);
   }
 
-  /// @abi action
+  void verify_symbol_str(const string& str)
+  {
+    eosio_assert(str.length() > 0, "Empty string. A symbol name expected");
+    eosio_assert(str.length() <= 7, "Suymbol name is longer than 7 characters");
+    for( int i = 0; i < str.length(); i++ ) {
+      char c = str[i];
+      eosio_assert('A' <= c && c <= 'Z', "Invalid character in symbol name. Expected [A-Z]{1,7}");
+    }
+  }
+
+      
+   /// @abi action
   void setvalue (account_name owner, string symbol, name key, string value)
   {
     require_auth( owner );
@@ -137,7 +144,23 @@ public:
     e.symbol = symbol;
     set_entry_flag( e, flag );
   }
-  
+
+  /// @abi action
+  void modsymbol (account_name owner, string oldsymbol, string newsymbol)
+  {
+    require_auth( owner );    
+    verify_symbol_str(newsymbol);
+
+    entry e;
+    e.owner = owner;
+    e.symbol = newsymbol;
+    eosio_assert( !entry_exists(e), "Such symbol already exists");
+
+    e.symbol = oldsymbol;
+    modify_entry( e, [&]( auto& ent ) {
+        ent.symbol = newsymbol;
+      });
+  }
 };
 
 
@@ -149,7 +172,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( tokencatalog, (setprice)(setvalue)(setvalues)(settags)(setflag)(claimrefund) );
+      EOSIO_API( tokencatalog, (setprice)(setvalue)(setvalues)(settags)(setflag)(modsymbol)(claimrefund) );
     }                                       
   }
 }

@@ -58,8 +58,39 @@ public:
     }
 
     // check if the payment amount is right
-    eosio_assert(payment >= exactprice, "Payment amount is too low");
-    eosio_assert(payment == exactprice, "Payment amount is too high");
+
+    if( payment != exactprice ) {
+      int64_t p = (int64_t)exactprice.symbol.precision();
+      
+      int64_t p10 = 1;
+      while( p > 0  ) {
+        p10 *= 10; --p;
+      }
+      p = (int64_t)exactprice.symbol.precision();
+
+      char fraction[p+1];
+      fraction[p] = '\0';
+      auto change = exactprice.amount % p10;
+      
+      for( int64_t i = p -1; i >= 0; --i ) {
+        fraction[i] = (change % 10) + '0';
+        change /= 10;
+      }
+
+      char symname[9];
+      auto sym = exactprice.symbol.name();
+      for( int i = 0; i < 7; ++i ) {
+        char c = (char)(sym & 0xff);
+        symname[i] = c;
+        if( c == 0 ) break;
+        sym >>= 8;
+      }
+
+      char str[256];
+      sprintf(str, "Incorrect payment amount. Expected %lld.%s %s",
+              exactprice.amount / p10, fraction, symname);
+      eosio_assert(0, str);
+    }
     
     _entries.emplace(_self, [&]( auto& ce ) {
         ce = ent;

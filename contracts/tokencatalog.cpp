@@ -67,7 +67,7 @@ public:
    /// @abi action
   void setvalue (account_name owner, string symbol, name key, string value)
   {
-    require_auth( owner );
+    require_owner_or_delegate_auth( owner );
     eosio_assert( value.length() <= MAX_VALUE_LEN, "Value is too long" );
     entry e;
     e.owner = owner;
@@ -96,7 +96,7 @@ public:
   /// @abi action
   void setvalues (account_name owner, string symbol, vector<keyval> values)
   {
-    require_auth( owner );
+    require_owner_or_delegate_auth( owner );
     for(auto kv: values) {
       eosio_assert( kv.value.length() <= MAX_VALUE_LEN, "Value is too long" );
     }
@@ -127,7 +127,7 @@ public:
   /// @abi action
   void settags (account_name owner, string symbol, vector<name>& tags)
   {
-    require_auth( owner );
+    require_owner_or_delegate_auth( owner );
     entry e;
     e.owner = owner;
     e.symbol = symbol;
@@ -138,7 +138,7 @@ public:
   /// @abi action
   void setflag (account_name owner, string symbol, name flag)
   {
-    require_auth( owner );
+    require_owner_or_delegate_auth( owner );
     entry e;
     e.owner = owner;
     e.symbol = symbol;
@@ -148,7 +148,7 @@ public:
   /// @abi action
   void modsymbol (account_name owner, string oldsymbol, string newsymbol)
   {
-    require_auth( owner );    
+    require_owner_or_delegate_auth( owner );    
     verify_symbol_str(newsymbol);
 
     entry e;
@@ -172,7 +172,8 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( tokencatalog, (setprice)(setvalue)(setvalues)(settags)(setflag)(modsymbol)(claimrefund) );
+      EOSIO_API( tokencatalog,
+                 (setprice)(setvalue)(setvalues)(settags)(setflag)(modsymbol)(claimrefund)(delegate) );
     }                                       
   }
 }

@@ -11,7 +11,7 @@ class catalog : public eosio::contract {
 public:
   catalog( account_name self ):
     contract(self), _tagcloud(self, self), _prices(self, self),
-    _entries(self, self), _payments(self, self)
+    _entries(self, self), _payments(self, self), _reps(self, self)
   {}
 
   const float REFUND_RATE = 0.9;
@@ -173,7 +173,7 @@ public:
   /// @abi action
   void claimrefund(account_name owner)
   {
-    require_auth(owner);
+    require_owner_or_delegate_auth(owner);
     eosio_assert( !has_open_refund(owner),
                   "An unpaid refund is pending for this owner" );
 
@@ -195,6 +195,12 @@ public:
     }
 
     eosio_assert(found, "No data found for this owner");
+
+    // undelegate
+    auto repsitr = _reps.find(owner);
+    if( repsitr != _reps.end() ) {
+      _reps.erase(repsitr);
+    }
 
     // mark payments as refund pending
     auto payidx = _payments.template get_index<N(owner)>();
@@ -219,7 +225,7 @@ public:
                 currency::transfer
                   {
                     .from=_self, .to=owner,
-                      .quantity=payitr->balance, .memo="Refundment as requested"
+                      .quantity=payitr->balance, .memo="Refund as requested"
                       }
           }.send(); 
         payitr++;
@@ -248,7 +254,48 @@ public:
       }
     }
   }      
+
   
+  /// @abi action
+  void delegate(account_name owner, account_name representative)
+  {
+    require_owner_or_delegate_auth(owner);
+    auto repsitr = _reps.find(owner);
+    if( repsitr == _reps.end() ) {
+      eosio_assert(representative != owner, "Representative is the same as owner");
+      _reps.emplace(_self, [&]( auto& d ) {
+          d.owner = owner;
+          d.representative = representative;
+        });
+    }
+    else {
+      if( representative == owner ) { // remove existimng representative
+        _reps.erase(repsitr);
+      }
+      else {
+        eosio_assert(repsitr->representative != representative,
+                     "This representative is already set up for this owner");
+        _reps.modify(*repsitr, _self, [&](auto& d) {
+            d.representative = representative;});
+      }
+    }
+  }
+  
+
+  void require_owner_or_delegate_auth(account_name owner)
+  {
+    if( has_auth(owner) ) {
+      return;
+    }
+
+    auto repsitr = _reps.find(owner);
+    if( repsitr == _reps.end() ) {
+      require_auth(owner); // throw a standart exception with standart text
+    } else {
+      require_auth(repsitr->representative);
+    }
+  }
+      
 
 private:
 
@@ -354,11 +401,23 @@ private:
     return false;
   }
 
+
+  
+  /// @abi table
+  struct rep {
+    account_name       owner;
+    account_name       representative;
+    auto primary_key()const { return owner; }
+  };
+
+  typedef eosio::multi_index<N(rep), rep> reps;
+  
   
   prices _prices;
   tagcloud _tagcloud;
   entries _entries;
   payments _payments;
+  reps _reps;
 };
 
 

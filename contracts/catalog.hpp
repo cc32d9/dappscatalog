@@ -60,35 +60,35 @@ public:
     // check if the payment amount is right
 
     if( payment != exactprice ) {
-      int64_t p = (int64_t)exactprice.symbol.precision();
+      int64_t pres = (int64_t)exactprice.symbol.precision();
+      char buf[64];
+      char* start = buf + sizeof(buf) - 10;
+      char* end = start;
+      int digits = 0;
       
-      int64_t p10 = 1;
-      while( p > 0  ) {
-        p10 *= 10; --p;
+      int64_t amount = exactprice.amount;
+      while( amount != 0 || digits < pres+1 ) {
+        --start;
+        *start = (amount % 10) + '0';
+        digits++;
+        if( digits == pres ) {
+          *--start = '.';
+        }
+        amount /= 10;
       }
-      p = (int64_t)exactprice.symbol.precision();
-
-      char fraction[p+1];
-      fraction[p] = '\0';
-      auto change = exactprice.amount % p10;
       
-      for( int64_t i = p -1; i >= 0; --i ) {
-        fraction[i] = (change % 10) + '0';
-        change /= 10;
-      }
-
-      char symname[9];
+      *end++ = ' ';
       auto sym = exactprice.symbol.name();
       for( int i = 0; i < 7; ++i ) {
         char c = (char)(sym & 0xff);
-        symname[i] = c;
+        *end++ = c;
         if( c == 0 ) break;
         sym >>= 8;
       }
-
-      char str[256];
-      sprintf(str, "Incorrect payment amount. Expected %lld.%s %s",
-              exactprice.amount / p10, fraction, symname);
+      *end = 0;
+      
+      char str[256] = "Incorrect payment amount. Expected ";
+      strcat(str, start);
       eosio_assert(0, str);
     }
     

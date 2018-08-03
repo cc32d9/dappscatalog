@@ -11,7 +11,8 @@ class catalog : public eosio::contract {
 public:
   catalog( account_name self ):
     contract(self), _tagcloud(self, self), _prices(self, self),
-    _entries(self, self), _payments(self, self), _reps(self, self)
+    _entries(self, self), _payments(self, self), _reps(self, self),
+    _vouchers(self, self)
   {}
 
   const float REFUND_RATE = 0.9;
@@ -51,10 +52,25 @@ public:
       entitr++;
     }
 
+    bool decrement_promo = false;
+    
     if( found ) {
       exactprice = priceobj.psubentry;
-    } else {
-      exactprice = priceobj.pnewentry;
+    }
+    else {
+      auto vchr = _vouchers.find(ent.owner);
+      if( vchr != _vouchers.end() ) {
+        eosio_assert(payment.contract == vchr->contract,
+                     "You have a voucher in different currency");
+        exactprice = vchr->price;
+      }
+      else if( priceobj.promocount > 0 ) {
+        exactprice = priceobj.ppromo;
+        decrement_promo = true;
+      }
+      else {
+        exactprice = priceobj.pnewentry;
+      }
     }
 
     // check if the payment amount is right
@@ -98,7 +114,17 @@ public:
       });
 
     // remember the payment for possible refunding
-    register_payment(ent.owner, payment);  
+    register_payment(ent.owner, payment);
+
+    if( decrement_promo ) {
+      auto pitr = _prices.find(priceobj.id);
+      _prices.modify( *pitr, _self, [&]( auto& p ) {
+          p.promocount--;
+          if( p.promocount == 0 ) {
+            p.ppromo.amount = 0;
+          }
+        });
+    }
   }
 
   
@@ -162,6 +188,57 @@ public:
     }
   }
 
+
+  /// @abi action
+  void startpromo(account_name contract, const asset& price, uint64_t count)
+  {
+    require_auth( _self );
+    auto codeidx = _prices.template get_index<N(contract)>();
+    auto itr = codeidx.lower_bound(contract);
+    while(itr != codeidx.end() &&
+          itr->contract == contract &&
+          itr->pnewentry.symbol != price.symbol ) {
+      itr++;
+    }
+
+    eosio_assert((itr != codeidx.end() &&
+                  itr->contract == contract &&
+                  itr->pnewentry.symbol == price.symbol),
+                 "Cannot find a price entry with such code and sumbol");
+
+    _prices.modify( *itr, _self, [&]( auto& p ) {
+        p.ppromo = price;
+        p.promocount = count;
+      });
+  }
+
+
+  /// @abi action
+  void addvoucher(account_name owner, account_name contract, const asset& price)
+  {
+    require_auth( _self );
+    eosio_assert( _vouchers.find(owner) == _vouchers.end(),
+                  "This owner has already got a voucher" );
+
+    _vouchers.emplace(_self, [&]( auto& v ) {
+        v.owner = owner;
+        v.contract = contract;
+        v.price = price;
+      });
+  }
+
+    
+  /// @abi action
+  void remvoucher(account_name owner)
+  {
+    require_auth( _self );
+    auto itr = _vouchers.find(owner);
+    eosio_assert( itr != _vouchers.end(),  "Cannot find a voucher for this owner" );
+    _vouchers.erase(itr);
+  }
+
+
+    
   /// @abi table
   struct tag {
     uint64_t       id;
@@ -326,7 +403,6 @@ public:
       require_auth(repsitr->representative);
     }
   }
-      
 
 private:
 
@@ -336,6 +412,8 @@ private:
     account_name   contract;
     asset          pnewentry;
     asset          psubentry;
+    asset          ppromo;
+    uint64_t       promocount = 0;
     auto primary_key()const { return id; }
     uint64_t get_contract()const { return contract; }
   };
@@ -359,6 +437,17 @@ private:
     return *itr;
   }
 
+
+  /// @abi table
+  struct voucher {
+    account_name   owner;
+    account_name   contract;
+    asset          price;
+    auto primary_key()const { return owner; }
+  };
+
+  typedef eosio::multi_index<N(voucher), voucher> vouchers;
+  
   auto get_entry(const ENTRY& ent)
   {
     auto entidx = _entries.template get_index<N(owner)>();
@@ -445,6 +534,7 @@ private:
   
   
   prices _prices;
+  vouchers _vouchers;
   tagcloud _tagcloud;
   entries _entries;
   payments _payments;

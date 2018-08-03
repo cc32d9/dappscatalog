@@ -153,7 +153,7 @@ public:
     entry e;
     e.owner = owner;
     e.tokenname = newtokenname;
-    eosio_assert( !entry_exists(e), "Such toke nname already exists");
+    eosio_assert( !entry_exists(e), "Such token name already exists");
 
     e.tokenname = oldtokenname;
     modify_entry( e, [&]( auto& ent ) {
@@ -172,7 +172,8 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
       EOSIO_API( tokencatalog,
-                 (setprice)(setvalue)(setvalues)(settags)(setflag)(modtokenname)(claimrefund)(delegate) );
+                 (setprice)(setvalue)(setvalues)(settags)(setflag)(modtokenname)(claimrefund)(delegate)
+                 (startpromo)(addvoucher)(remvoucher));
     }                                       
   }
 }

@@ -1,4 +1,4 @@
-CONTRACT=tokencatalog
+CONTRACT=dappscatalog
 
 all: $(CONTRACT).abi $(CONTRACT).wast
 

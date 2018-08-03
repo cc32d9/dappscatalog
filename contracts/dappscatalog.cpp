@@ -4,23 +4,25 @@
 struct entry {
   uint64_t      id;
   account_name  owner;
-  string        symbol;
-  string        title;
-  string        org;
-  string        url;
-  string        email;
-  string        descr;
+  string        tokenname = "";
+  string        title = "";
+  string        org = "";
+  string        urlwebsite = "";
+  string        urllogo = "";
+  string        urlsrccode = "";
+  string        email = "";
+  string        descr = "";
   uint64_t      flags = 0;
 
   auto primary_key()const { return id; }
   account_name get_owner()const { return owner; }
 
   bool operator==( const entry& b ) const {
-    return (this->owner == b.owner && this->symbol == b.symbol);
+    return (this->owner == b.owner && this->tokenname == b.tokenname);
   }
 
   bool operator!=( const entry& b ) const {
-    return (this->owner != b.owner || this->symbol != b.symbol);
+    return (this->owner != b.owner || this->tokenname != b.tokenname);
   }
   
 };
@@ -44,48 +46,57 @@ public:
       return;
     }
     
-    eosio_assert(data.memo.length() > 0, "Empty memo. A symbol name expected");
     verify_symbol_str(data.memo);
     
     entry e;
     e.owner = data.from;
-    e.symbol = data.memo;
+    e.tokenname = data.memo;
     pay_add_entry(payment, e);
   }
 
   void verify_symbol_str(const string& str)
   {
-    eosio_assert(str.length() > 0, "Empty string. A symbol name expected");
-    eosio_assert(str.length() <= 7, "Suymbol name is longer than 7 characters");
+    eosio_assert(str.length() <= 7, "Symbol name is longer than 7 characters");
     for( int i = 0; i < str.length(); i++ ) {
       char c = str[i];
       eosio_assert('A' <= c && c <= 'Z', "Invalid character in symbol name. Expected [A-Z]{1,7}");
     }
   }
 
-      
-   /// @abi action
-  void setvalue (account_name owner, string symbol, name key, string value)
+  
+  void set_val(entry &ent, name key, string value)
+  {
+    switch(key) {
+    case N(title):   ent.title = value;
+      break;
+    case N(org):     ent.org = value;
+      break;
+    case N(urlwebsite): ent.urlwebsite = value;
+      break;
+    case N(urllogo): ent.urllogo = value;
+      break;
+    case N(urlsrccode): ent.urlsrccode = value;
+      break;
+    case N(email):   ent.email = value;
+      break;
+    case N(descr):   ent.descr = value;
+      break;
+    default:
+      eosio_assert(0, "Unknown key name");
+    }
+  }
+  
+                 
+  
+  /// @abi action
+  void setvalue (account_name owner, string tokenname, name key, string value)
   {
     require_owner_or_delegate_auth( owner );
     eosio_assert( value.length() <= MAX_VALUE_LEN, "Value is too long" );
     entry e;
     e.owner = owner;
-    e.symbol = symbol;
-    modify_entry( e, [&]( auto& ent ) {
-        switch(key) {
-        case N(title):   ent.title = value;
-          break;
-        case N(org):     ent.org = value;
-          break;
-        case N(url):     ent.url = value;
-          break;
-        case N(email):   ent.email = value;
-          break;
-        case N(descr):   ent.descr = value;
-          break;
-        default: eosio_assert(0, "Unknown key name");
-        }});
+    e.tokenname = tokenname;
+    modify_entry( e, [&]( auto& ent ) { set_val(ent, key, value); });
   }
 
   struct keyval {
@@ -94,7 +105,7 @@ public:
   };
     
   /// @abi action
-  void setvalues (account_name owner, string symbol, vector<keyval> values)
+  void setvalues (account_name owner, string tokenname, vector<keyval> values)
   {
     require_owner_or_delegate_auth( owner );
     for(auto kv: values) {
@@ -103,62 +114,50 @@ public:
 
     entry e;
     e.owner = owner;
-    e.symbol = symbol;
+    e.tokenname = tokenname;
     modify_entry( e, [&]( auto& ent ) {
         for(auto kv: values) {
-          switch(kv.key) {
-          case N(title):    ent.title = kv.value;
-            break;
-          case N(org):      ent.org = kv.value;
-            break;
-          case N(url):      ent.url = kv.value;
-            break;
-          case N(email):    ent.email = kv.value;
-            break;
-          case N(descr):    ent.descr = kv.value;
-            break;
-          default: eosio_assert(0, "Unknown key name");
-          }
+          set_val(ent, kv.key, kv.value);
         }
       });
   }
   
   
   /// @abi action
-  void settags (account_name owner, string symbol, vector<name>& tags)
+  void settags (account_name owner, string tokenname, vector<name>& tags)
   {
     require_owner_or_delegate_auth( owner );
     entry e;
     e.owner = owner;
-    e.symbol = symbol;
+    e.tokenname = tokenname;
     set_entry_tags( e, tags );
   }
 
   
   /// @abi action
-  void setflag (account_name owner, string symbol, name flag)
+  void setflag (account_name owner, string tokenname, name flag)
   {
     require_owner_or_delegate_auth( owner );
     entry e;
     e.owner = owner;
-    e.symbol = symbol;
+    e.tokenname = tokenname;
     set_entry_flag( e, flag );
   }
 
   /// @abi action
-  void modsymbol (account_name owner, string oldsymbol, string newsymbol)
+  void modtokenname (account_name owner, string oldtokenname, string newtokenname)
   {
     require_owner_or_delegate_auth( owner );    
-    verify_symbol_str(newsymbol);
+    verify_symbol_str(newtokenname);
 
     entry e;
     e.owner = owner;
-    e.symbol = newsymbol;
-    eosio_assert( !entry_exists(e), "Such symbol already exists");
+    e.tokenname = newtokenname;
+    eosio_assert( !entry_exists(e), "Such toke nname already exists");
 
-    e.symbol = oldsymbol;
+    e.tokenname = oldtokenname;
     modify_entry( e, [&]( auto& ent ) {
-        ent.symbol = newsymbol;
+        ent.tokenname = newtokenname;
       });
   }
 };
@@ -173,7 +172,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
     tokencatalog thiscontract(receiver);
     switch( action ) {
       EOSIO_API( tokencatalog,
-                 (setprice)(setvalue)(setvalues)(settags)(setflag)(modsymbol)(claimrefund)(delegate) );
+                 (setprice)(setvalue)(setvalues)(settags)(setflag)(modtokenname)(claimrefund)(delegate) );
     }                                       
   }
 }

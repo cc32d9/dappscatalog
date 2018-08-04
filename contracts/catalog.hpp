@@ -52,8 +52,6 @@ public:
       entitr++;
     }
 
-    bool decrement_promo = false;
-    
     if( found ) {
       exactprice = priceobj.psubentry;
     }
@@ -63,10 +61,17 @@ public:
         eosio_assert(payment.contract == vchr->contract,
                      "You have a voucher in different currency");
         exactprice = vchr->price;
+        _vouchers.erase(vchr);
       }
       else if( priceobj.promocount > 0 ) {
         exactprice = priceobj.ppromo;
-        decrement_promo = true;
+        auto pitr = _prices.find(priceobj.id);
+        _prices.modify( *pitr, _self, [&]( auto& p ) {
+            p.promocount--;
+            if( p.promocount == 0 ) {
+              p.ppromo.amount = 0;
+            }
+          });
       }
       else {
         exactprice = priceobj.pnewentry;
@@ -115,16 +120,6 @@ public:
 
     // remember the payment for possible refunding
     register_payment(ent.owner, payment);
-
-    if( decrement_promo ) {
-      auto pitr = _prices.find(priceobj.id);
-      _prices.modify( *pitr, _self, [&]( auto& p ) {
-          p.promocount--;
-          if( p.promocount == 0 ) {
-            p.ppromo.amount = 0;
-          }
-        });
-    }
   }
 
   
@@ -220,11 +215,17 @@ public:
     eosio_assert( _vouchers.find(owner) == _vouchers.end(),
                   "This owner has already got a voucher" );
 
+    auto entidx = _entries.template get_index<N(owner)>();
+    auto entitr = entidx.lower_bound(owner);
+    eosio_assert(entitr == entidx.end() || entitr->owner != owner,
+                 "This owner has already got an entry" );
+    
     _vouchers.emplace(_self, [&]( auto& v ) {
         v.owner = owner;
         v.contract = contract;
         v.price = price;
       });
+    require_recipient( owner );
   }
 
     
@@ -235,6 +236,7 @@ public:
     auto itr = _vouchers.find(owner);
     eosio_assert( itr != _vouchers.end(),  "Cannot find a voucher for this owner" );
     _vouchers.erase(itr);
+    require_recipient( owner );
   }
 
 
@@ -304,9 +306,10 @@ public:
 
     eosio_assert(found, "No data found for this owner");
 
-    // undelegate
+    // undelegate and notify the delegate
     auto repsitr = _reps.find(owner);
     if( repsitr != _reps.end() ) {
+      require_recipient( repsitr->representative );
       _reps.erase(repsitr);
     }
 
@@ -375,14 +378,18 @@ public:
           d.owner = owner;
           d.representative = representative;
         });
+      require_recipient( representative );
     }
     else {
       if( representative == owner ) { // remove existimng representative
+        require_recipient( repsitr->representative );
         _reps.erase(repsitr);
       }
       else {
         eosio_assert(repsitr->representative != representative,
                      "This representative is already set up for this owner");
+        require_recipient( repsitr->representative );        
+        require_recipient( representative );        
         _reps.modify(*repsitr, _self, [&](auto& d) {
             d.representative = representative;});
       }

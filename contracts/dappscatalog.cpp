@@ -25,11 +25,11 @@ struct entry {
     return (this->owner != b.owner || this->tokenname != b.tokenname);
   }
   
-};
+}; 
 
-class tokencatalog : public catalog<entry> {
+class dappscatalog : public catalog<entry> {
 public:
-  tokencatalog( account_name self ):
+  dappscatalog( account_name self ):
     catalog<entry>(self)
   {}
 
@@ -165,16 +165,19 @@ public:
 
 extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   if (code == N(eosio.token) && action == N(transfer)) {
-    tokencatalog thiscontract(receiver);
+    dappscatalog thiscontract(receiver);
     thiscontract.transferAction(code);
   }
   else if( code == receiver ) {
-    tokencatalog thiscontract(receiver);
+    dappscatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( tokencatalog,
+      EOSIO_API( dappscatalog,
                  (setprice)(setvalue)(setvalues)(settags)(setflag)(modtokenname)(claimrefund)(delegate)
                  (startpromo)(addvoucher)(remvoucher));
     }                                       
   }
 }
+
+
+
 

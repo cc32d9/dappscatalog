@@ -12,7 +12,7 @@ $(CONTRACT).wast: catalog.hpp
 	eosiocpp -o $@ $<
 
 %.abi: %.cpp
-	eosiocpp -g $@ $<
+	perl mkabi.pl $<
 
 clean:
 	rm -f $(CONTRACT).abi $(CONTRACT).wast $(CONTRACT).wasm

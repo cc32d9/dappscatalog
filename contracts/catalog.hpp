@@ -12,7 +12,7 @@ public:
   catalog( account_name self ):
     contract(self), _tagcloud(self, self), _prices(self, self),
     _entries(self, self), _payments(self, self), _reps(self, self),
-    _vouchers(self, self)
+    _vouchers(self, self), _props(self, self)
   {}
 
   const float REFUND_RATE = 0.9;
@@ -120,6 +120,7 @@ public:
 
     // remember the payment for possible refunding
     register_payment(ent.owner, payment);
+    incr_revision();
   }
 
   
@@ -128,6 +129,7 @@ public:
   {
     auto entitr = get_entry(e);
     _entries.modify( *entitr, _self, std::forward<Lambda&&>(updater) );
+    incr_revision();
   }
 
   
@@ -148,6 +150,7 @@ public:
           break;
         default: eosio_assert(0, "Wrong flag name. Expected ready|complete|incomplete|show|hide");
         }});
+    incr_revision();
   }    
   
   /// @abi action
@@ -277,6 +280,7 @@ public:
           p.tag = tag;
         });
     }
+    incr_revision();
   }
 
   
@@ -342,6 +346,8 @@ public:
         payitr++;
       }
     }
+
+    incr_revision();
   }
 
   
@@ -411,6 +417,31 @@ public:
     }
   }
 
+  
+  void setprop_incr(uint64_t prop)
+  {
+    auto propitr = _props.find(prop);
+    if( propitr != _props.end() ) {
+      _props.modify( *propitr, _self, [&]( auto& p ) {
+          p.val_uint++;
+        });
+    }
+    else {
+      _props.emplace(_self, [&]( auto& p ) {
+          p.property.value = prop;
+          p.val_uint = 1;
+          p.val_str = "";
+          p.val_name.value = 0;
+        });
+    }
+  }        
+
+  inline void incr_revision()
+  {
+    setprop_incr(N(revision));
+  }
+
+  
 private:
 
   /// @abi table
@@ -539,6 +570,18 @@ private:
 
   typedef eosio::multi_index<N(rep), rep> reps;
   
+
+  /// @abi table
+  struct prop {
+    name       property;
+    uint64_t   val_uint;
+    string     val_str;
+    name       val_name;
+    auto primary_key()const { return property.value; }
+  };
+
+  typedef eosio::multi_index<N(prop), prop> props;
+
   
   prices _prices;
   vouchers _vouchers;
@@ -546,6 +589,7 @@ private:
   entries _entries;
   payments _payments;
   reps _reps;
+  props _props;
 };
 
 

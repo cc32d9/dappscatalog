@@ -1,6 +1,6 @@
 CONTRACT=dappscatalog
 
-all: $(CONTRACT).abi $(CONTRACT).wast
+all: $(CONTRACT).wast $(CONTRACT).abi
 
 $(CONTRACT).abi: catalog.hpp *_rc.md
 

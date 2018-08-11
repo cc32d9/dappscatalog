@@ -160,6 +160,16 @@ public:
         ent.tokenname = newtokenname;
       });
   }
+
+  /// @abi action
+  void blacklist(account_name owner)
+  {
+    require_auth( _self );
+    entry e;
+    e.owner = owner;
+    e.title = "Blacklisted";
+    set_blacklist_entry(e);
+  }
 };
 
 
@@ -171,7 +181,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     dappscatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( dappscatalog, (setprice)(setvalue)(setvalues)(settags)(setflag)(modtokenname)(claimrefund)(delegate)(startpromo)(addvoucher)(remvoucher));
+      EOSIO_API( dappscatalog, (setprice)(setvalue)(setvalues)(settags)(setflag)(modtokenname)(claimrefund)(delegate)(startpromo)(addvoucher)(remvoucher)(blacklist));
     }                                       
   }
 }

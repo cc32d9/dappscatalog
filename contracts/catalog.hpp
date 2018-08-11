@@ -22,6 +22,17 @@ public:
   typedef eosio::multi_index<N(entry), ENTRY,
     indexed_by<N(owner), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_owner>>> entries;
 
+  void check_blacklist( account_name owner )
+  {
+    auto entidx = _entries.template get_index<N(owner)>();
+    auto entitr = entidx.lower_bound(owner);
+    if( entitr != entidx.end() && entitr->owner == owner ) {
+      eosio_assert( (entitr->flags & 4UL) == 0, "This accouunt is blacklisted" );
+    }
+  }
+    
+
+  
   bool entry_exists( const ENTRY& ent )
   {
     auto entidx = _entries.template get_index<N(owner)>();
@@ -34,9 +45,12 @@ public:
     }
     return false;
   }
-    
+
+
+  
   void pay_add_entry( const extended_asset& payment, const ENTRY& ent )
   {
+    check_blacklist( ent.owner );
     eosio_assert( !has_open_refund(ent.owner),
                   "An unpaid refund is pending for this owner" );
 
@@ -122,6 +136,21 @@ public:
     register_payment(ent.owner, payment);
     incr_revision();
   }
+
+
+  void set_blacklist_entry( const ENTRY& ent )
+  {
+    check_blacklist( ent.owner );
+    erase_and_send_refund( ent.owner );
+    _entries.emplace(_self, [&]( auto& ce ) {
+        ce = ent;
+        ce.id = _entries.available_primary_key();
+        ce.flags = 4UL;
+      });
+  }
+    
+
+
 
   
   template<typename Lambda>
@@ -215,6 +244,7 @@ public:
   void addvoucher(account_name owner, account_name contract, const asset& price)
   {
     require_auth( _self );
+    check_blacklist( owner );
     eosio_assert( _vouchers.find(owner) == _vouchers.end(),
                   "This owner has already got a voucher" );
 
@@ -242,7 +272,7 @@ public:
     require_recipient( owner );
   }
 
-
+  
     
   /// @abi table
   struct tag {
@@ -288,66 +318,7 @@ public:
   void claimrefund(account_name owner)
   {
     require_owner_or_delegate_auth(owner);
-    eosio_assert( !has_open_refund(owner),
-                  "An unpaid refund is pending for this owner" );
-
-    bool found = false;
-    // erase tagcloud and entries
-    auto entidx = _entries.template get_index<N(owner)>();
-    auto entitr = entidx.lower_bound(owner);
-    while(entitr != entidx.end() && entitr->owner == owner) {
-      uint64_t entry_id = entitr->id;
-
-      auto tagidx = _tagcloud.template get_index<N(entryid)>();
-      auto tagitr = tagidx.lower_bound(entry_id);
-      while(tagitr != tagidx.end() && tagitr->entry_id == entry_id ) {
-        tagitr = tagidx.erase(tagitr);
-      }
-
-      entitr = entidx.erase(entitr);
-      found = true;
-    }
-
-    eosio_assert(found, "No data found for this owner");
-
-    // undelegate and notify the delegate
-    auto repsitr = _reps.find(owner);
-    if( repsitr != _reps.end() ) {
-      require_recipient( repsitr->representative );
-      _reps.erase(repsitr);
-    }
-
-    // mark payments as refund pending
-    auto payidx = _payments.template get_index<N(owner)>();
-    auto payitr = payidx.lower_bound(owner);
-    while(payitr != payidx.end() && payitr->owner == owner ) {
-      _payments.modify( *payitr, _self, [&]( auto& p ) {
-          p.torefund = true;
-          p.balance.amount *= REFUND_RATE;
-        });
-      payitr++;
-    }
-   
-    // perform payback automatically
-    if( autorefund ) {
-      payitr = payidx.lower_bound(owner);
-      while(payitr != payidx.end() && payitr->owner == owner ) {
-        action
-          {
-            permission_level{_self, N(active)},
-              payitr->balance.contract,
-                N(transfer),
-                currency::transfer
-                  {
-                    .from=_self, .to=owner,
-                      .quantity=payitr->balance, .memo="Refund as requested"
-                      }
-          }.send(); 
-        payitr++;
-      }
-    }
-
-    incr_revision();
+    erase_and_send_refund(owner);
   }
 
   
@@ -405,6 +376,7 @@ public:
 
   void require_owner_or_delegate_auth(account_name owner)
   {
+    check_blacklist(owner);
     if( has_auth(owner) ) {
       return;
     }
@@ -559,6 +531,71 @@ private:
     return false;
   }
 
+  
+  void erase_and_send_refund(account_name owner)
+  {
+    eosio_assert( !has_open_refund(owner),
+                  "An unpaid refund is pending for this owner" );
+
+    bool found = false;
+    // erase tagcloud and entries
+    auto entidx = _entries.template get_index<N(owner)>();
+    auto entitr = entidx.lower_bound(owner);
+    while(entitr != entidx.end() && entitr->owner == owner) {
+      uint64_t entry_id = entitr->id;
+
+      auto tagidx = _tagcloud.template get_index<N(entryid)>();
+      auto tagitr = tagidx.lower_bound(entry_id);
+      while(tagitr != tagidx.end() && tagitr->entry_id == entry_id ) {
+        tagitr = tagidx.erase(tagitr);
+      }
+
+      entitr = entidx.erase(entitr);
+      found = true;
+    }
+
+    eosio_assert(found, "No data found for this owner");
+
+    // undelegate and notify the delegate
+    auto repsitr = _reps.find(owner);
+    if( repsitr != _reps.end() ) {
+      require_recipient( repsitr->representative );
+      _reps.erase(repsitr);
+    }
+
+    // mark payments as refund pending
+    auto payidx = _payments.template get_index<N(owner)>();
+    auto payitr = payidx.lower_bound(owner);
+    while(payitr != payidx.end() && payitr->owner == owner ) {
+      _payments.modify( *payitr, _self, [&]( auto& p ) {
+          p.torefund = true;
+          p.balance.amount *= REFUND_RATE;
+        });
+      payitr++;
+    }
+   
+    // perform payback automatically
+    if( autorefund ) {
+      payitr = payidx.lower_bound(owner);
+      while(payitr != payidx.end() && payitr->owner == owner ) {
+        action
+          {
+            permission_level{_self, N(active)},
+              payitr->balance.contract,
+                N(transfer),
+                currency::transfer
+                  {
+                    .from=_self, .to=owner,
+                      .quantity=payitr->balance, .memo="Refund as requested"
+                      }
+          }.send(); 
+        payitr++;
+      }
+    }
+
+    incr_revision();
+  }
+  
 
   
   /// @abi table

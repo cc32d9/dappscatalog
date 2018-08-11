@@ -164,7 +164,7 @@ public:
 
 
 extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
-  if (code == N(eosio.token) && action == N(transfer)) {
+  if( action == N(transfer) ) {
     dappscatalog thiscontract(receiver);
     thiscontract.transferAction(code);
   }

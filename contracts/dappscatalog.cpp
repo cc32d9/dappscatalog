@@ -1,6 +1,6 @@
 #include "catalog.hpp"
 
-/// @abi table
+/// @abi table entries
 struct entry {
   uint64_t      id;
   account_name  owner;

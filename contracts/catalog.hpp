@@ -19,7 +19,7 @@ public:
   const int MAX_TAGS = 10;
   bool autorefund = true;
   
-  typedef eosio::multi_index<N(entry), ENTRY,
+  typedef eosio::multi_index<N(entries), ENTRY,
     indexed_by<N(owner), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_owner>>> entries;
 
   void check_blacklist( account_name owner )
@@ -274,7 +274,7 @@ public:
 
   
     
-  /// @abi table
+  /// @abi table tags
   struct tag {
     uint64_t       id;
     uint64_t       entry_id;
@@ -284,7 +284,7 @@ public:
     uint64_t get_entry_id()const { return entry_id; }
   };
 
-  typedef eosio::multi_index<N(tag), tag,
+  typedef eosio::multi_index<N(tags), tag,
     indexed_by<N(tag), const_mem_fun<tag, uint64_t, &tag::get_tag>>,
     indexed_by<N(entryid), const_mem_fun<tag, uint64_t, &tag::get_entry_id>>> tagcloud;
 
@@ -416,7 +416,7 @@ public:
   
 private:
 
-  /// @abi table
+  /// @abi table prices
   struct price {
     uint64_t       id;
     account_name   contract;
@@ -429,7 +429,7 @@ private:
   };
   
 
-  typedef eosio::multi_index<N(price), price,
+  typedef eosio::multi_index<N(prices), price,
     indexed_by<N(contract), const_mem_fun<price, uint64_t, &price::get_contract>>> prices;
 
   const price& get_price_obj(const account_name contract, const symbol_type symbol)
@@ -448,7 +448,7 @@ private:
   }
 
 
-  /// @abi table
+  /// @abi table vouchers
   struct voucher {
     account_name   owner;
     account_name   contract;
@@ -456,7 +456,7 @@ private:
     auto primary_key()const { return owner; }
   };
 
-  typedef eosio::multi_index<N(voucher), voucher> vouchers;
+  typedef eosio::multi_index<N(vouchers), voucher> vouchers;
   
   auto get_entry(const ENTRY& ent)
   {
@@ -484,7 +484,7 @@ private:
     uint64_t get_refund()const { return torefund?1:0; }
   };
 
-  typedef eosio::multi_index<N(payment), payment,
+  typedef eosio::multi_index<N(payments), payment,
     indexed_by<N(owner), const_mem_fun<payment, uint64_t, &payment::get_owner>>,
     indexed_by<N(refund), const_mem_fun<payment, uint64_t, &payment::get_refund>>> payments;
 
@@ -598,17 +598,17 @@ private:
   
 
   
-  /// @abi table
+  /// @abi table reps
   struct rep {
     account_name       owner;
     account_name       representative;
     auto primary_key()const { return owner; }
   };
 
-  typedef eosio::multi_index<N(rep), rep> reps;
+  typedef eosio::multi_index<N(reps), rep> reps;
   
 
-  /// @abi table
+  /// @abi table props
   struct prop {
     name       property;
     uint64_t   val_uint;
@@ -617,7 +617,7 @@ private:
     auto primary_key()const { return property.value; }
   };
 
-  typedef eosio::multi_index<N(prop), prop> props;
+  typedef eosio::multi_index<N(props), prop> props;
 
   
   prices _prices;

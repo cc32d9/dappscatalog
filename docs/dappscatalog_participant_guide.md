@@ -24,7 +24,7 @@ Each data record has a number of fields as follows:
 
 * `org`: organization name
 
-* `urlwebsite`: URL piinting to the project website
+* `urlwebsite`: URL pointing to the project website
 
 * `urllogo`: URL pointing to the logo image that would be displayed on
   dappscatalog website
@@ -70,7 +70,10 @@ and expected amount is reported in the exception message.
 
 * Subsequent entries for the same owner: "20.0000 EOS"
 
-* Promotion during the project launch: "25.0000 EOS" for the first 10
+* This payment is a one-time fee for the life time of the
+  blockchain. Also all required RAM is paid by `dappscatalog`.
+
+* Promotion during the project launch: "20.0000 EOS" for the first 10
   payers.
 
 * The owners of `dappscatalog` may issue discount vouchers to some

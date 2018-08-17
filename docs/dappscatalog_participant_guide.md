@@ -84,6 +84,30 @@ modifications on the record contents are free of charge, and the record
 will stay for as long as EOS mainnet is operational.
 
 
+## Tags and attributes
+
+Each record can have up to 10 tags and up to 5 attributes.
+
+Tags will form a tag cloud, so that your users would easily find your
+entries. Tag names are up to 12 characters long.
+
+Attributes are arbitrary key-value pairs that will be displayed at
+dappscatalog.com website. Each key name is up to 12 symbols long, and
+values are up to 80 characters long.
+
+
+## Flags
+
+Each entry has a `flags` integer field which indicates the status of the
+entry. The first two bits are for completeness and visibility, so the
+value "3" indicates that the entry is complete and ready for displaying.
+
+The third bit indicates blacklisted owner. The administrator of
+dappscatalog reserves the right to blacklist accounts for inappropriate
+content.
+
+
+
 ## Quick start example
 
 

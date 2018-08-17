@@ -10,14 +10,17 @@ template<typename ENTRY>
 class catalog : public eosio::contract {
 public:
   catalog( account_name self ):
-    contract(self), _tagcloud(self, self), _prices(self, self),
+    contract(self), _tagcloud(self, self),
+    _attrs(self, self), _prices(self, self),
     _entries(self, self), _payments(self, self), _reps(self, self),
     _vouchers(self, self), _props(self, self)
   {}
 
   const float REFUND_RATE = 0.9;
-  const int MAX_TAGS = 10;
   bool autorefund = true;
+  const int MAX_TAGS = 10;
+  const int MAX_ATTRS = 5;
+  const int MAX_ATTR_LEN = 80;
   
   typedef eosio::multi_index<N(entries), ENTRY,
     indexed_by<N(owner), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_owner>>> entries;
@@ -304,15 +307,81 @@ public:
     }
     
     for( name tag : tags ) {      
-      _tagcloud.emplace(_self, [&]( auto& p ) {
-          p.id = _tagcloud.available_primary_key();
-          p.entry_id = entry_id;
-          p.tag = tag;
+      _tagcloud.emplace(_self, [&]( auto& tg ) {
+          tg.id = _tagcloud.available_primary_key();
+          tg.entry_id = entry_id;
+          tg.tag = tag;
         });
     }
     incr_revision();
   }
 
+
+  /// @abi table attrs
+  struct attr {
+    uint64_t       id;
+    uint64_t       entry_id;
+    name           key;
+    string         value;
+    auto primary_key()const { return id; }
+    uint64_t get_entry_id()const { return entry_id; }
+  };
+
+  typedef eosio::multi_index<N(attrs), attr,
+    indexed_by<N(entryid), const_mem_fun<attr, uint64_t, &attr::get_entry_id>>> attrs;
+
+  
+  void set_attr(const ENTRY& e, name key, const string val)
+  {
+    eosio_assert(val.length() > 0, "Value cannot be empty");
+    eosio_assert(val.length() <= MAX_ATTR_LEN, "Value is too long");
+    auto entitr = get_entry(e);
+    auto entry_id = entitr->id;
+    
+    incr_revision();
+    auto attridx = _attrs.template get_index<N(entryid)>();
+    auto attritr = attridx.lower_bound(entry_id);
+    int count = 0;
+    while(attritr != attridx.end() && attritr->entry_id == entry_id ) {
+      if( attritr->key == key ) {
+        _attrs.modify( *attritr, _self, [&]( auto& a ) {
+            a.value = val;
+          });
+        return;
+      }
+      count++;
+      attritr++;
+    }
+
+    eosio_assert(count < MAX_ATTRS, "Too many attributes");
+    _attrs.emplace(_self, [&]( auto& a ) {
+        a.id = _attrs.available_primary_key();
+        a.entry_id = entry_id;
+        a.key = key;
+        a.value = val;
+      });
+  }
+
+
+  void del_attr(const ENTRY& e, name key)
+  {
+    auto entitr = get_entry(e);
+    auto entry_id = entitr->id;
+    
+    incr_revision();
+    auto attridx = _attrs.template get_index<N(entryid)>();
+    auto attritr = attridx.lower_bound(entry_id);
+    while(attritr != attridx.end() && attritr->entry_id == entry_id ) {
+      if( attritr->key == key ) {
+        attridx.erase(attritr);
+        return;
+      }
+      attritr++;
+    }
+    eosio_assert(false, "Attribute not found");
+  }
+
+  
   
   /// @abi action
   void claimrefund(account_name owner)
@@ -623,6 +692,7 @@ private:
   prices _prices;
   vouchers _vouchers;
   tagcloud _tagcloud;
+  attrs _attrs;
   entries _entries;
   payments _payments;
   reps _reps;

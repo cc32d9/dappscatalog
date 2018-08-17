@@ -133,6 +133,26 @@ public:
     set_entry_tags( e, tags );
   }
 
+
+  /// @abi action
+  void setattr (account_name owner, string tokenname, name key, const string val)
+  {
+    require_owner_or_delegate_auth( owner );
+    entry e;
+    e.owner = owner;
+    e.tokenname = tokenname;
+    set_attr( e, key, val );
+  }
+
+  /// @abi action
+  void delattr (account_name owner, string tokenname, name key)
+  {
+    require_owner_or_delegate_auth( owner );
+    entry e;
+    e.owner = owner;
+    e.tokenname = tokenname;
+    del_attr( e, key );
+  }
   
   /// @abi action
   void setflag (account_name owner, string tokenname, name flag)
@@ -181,7 +201,7 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   else if( code == receiver ) {
     dappscatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( dappscatalog, (setprice)(setvalue)(setvalues)(settags)(setflag)(modtokenname)(claimrefund)(delegate)(startpromo)(addvoucher)(remvoucher)(blacklist));
+      EOSIO_API( dappscatalog, (setprice)(setvalue)(setvalues)(settags)(setattr)(delattr)(setflag)(modtokenname)(claimrefund)(delegate)(startpromo)(addvoucher)(remvoucher)(blacklist));
     }                                       
   }
 }

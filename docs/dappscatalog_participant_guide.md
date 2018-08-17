@@ -151,6 +151,13 @@ cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
 cleos -u https://api.eosnewyork.io push action dappscatalog settags \
  '["lunarcrawler", "LUNAR", ["game", "space", "geek"]]' -p lunarcrawler
 
+# Set attributes
+cleos -u https://api.eosnewyork.io push action dappscatalog setattr \
+ '["lunarcrawler", "LUNAR", "status", "production"]' -p lunarcrawler
+cleos -u https://api.eosnewyork.io push action dappscatalog setattr \
+ '["lunarcrawler", "LUNAR", "telegram", "@lunarcrawler"]' -p lunarcrawler
+
+
 # Set the record as ready for listing
 cleos -u https://api.eosnewyork.io push action dappscatalog setflag \
  '["lunarcrawler", "LUNAR", "ready"]' -p lunarcrawler

@@ -34,7 +34,8 @@ Each data record has a number of fields as follows:
 
 * `email`: contact e-mail address
 
-* `descr`: project description, up to 1024 characters
+* `descr`: project description, up to 1024 characters. Line breaks can
+  be indicated with "\n".
 
 * `flags`: an integer with two lower bits indicating completeness and
   listing of the entry
@@ -144,7 +145,7 @@ cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
  '["lunarcrawler", "LUNAR", "email", "groundcontrol@lunarcrawler.io"]' -p lunarcrawler
 
 cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
- '["lunarcrawler", "LUNAR", "descr", "An awesome lunar expedition"]' -p lunarcrawler
+ '["lunarcrawler", "LUNAR", "descr", "An awesome lunar expedition.\nAll aboard!"]' -p lunarcrawler
 
 
 # Set the tags for the tag cloud

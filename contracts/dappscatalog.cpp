@@ -1,9 +1,9 @@
 #include "catalog.hpp"
 
-/// @abi table entries
-struct entry {
+
+struct [[eosio::table("entries")]] entry {
   uint64_t      id;
-  account_name  owner;
+  name          owner;
   string        tokenname = "";
   string        title = "";
   string        org = "";
@@ -15,7 +15,7 @@ struct entry {
   uint64_t      flags = 0;
 
   auto primary_key()const { return id; }
-  account_name get_owner()const { return owner; }
+  uint64_t get_owner()const { return owner.value; }
 
   bool operator==( const entry& b ) const {
     return (this->owner == b.owner && this->tokenname == b.tokenname);
@@ -27,32 +27,34 @@ struct entry {
   
 }; 
 
-class dappscatalog : public catalog<entry> {
+
+
+class [[eosio::contract]] dappscatalog : public catalog<entry> {
 public:
-  dappscatalog( account_name self ):
-    catalog<entry>(self)
+  dappscatalog( name self, name code, datastream<const char*> ds ):
+    catalog<entry>(self, code, ds)
   {}
 
   const int MAX_VALUE_LEN = 1024;
   
-  void transferAction (uint64_t code)
+  void transfer_action (name from, name to, asset quantity, string memo)
   {
-    auto data = unpack_action_data<currency::transfer>();
-    eosio_assert(data.quantity.is_valid(), "Invalid quantity");
-    extended_asset payment(data.quantity, code);
-
-    if(data.from == _self) {
-      refund(data.to, payment);
+    eosio_assert(quantity.is_valid(), "Invalid quantity");
+    extended_asset payment(quantity, get_code());
+    
+    if(from == _self) {
+      register_refund(to, payment);
       return;
     }
-    
-    verify_symbol_str(data.memo);
-    
-    entry e;
-    e.owner = data.from;
-    e.tokenname = data.memo;
-    pay_add_entry(payment, e);
+    else {
+      verify_symbol_str(memo);
+      entry e;
+      e.owner = from;
+      e.tokenname = memo;
+      pay_add_entry(payment, e);
+    }
   }
+  
 
   void verify_symbol_str(const string& str)
   {
@@ -66,20 +68,20 @@ public:
   
   void set_val(entry &ent, name key, string value)
   {
-    switch(key) {
-    case N(title):   ent.title = value;
+    switch(key.value) {
+    case name("title").value:   ent.title = value;
       break;
-    case N(org):     ent.org = value;
+    case name("org").value:     ent.org = value;
       break;
-    case N(urlwebsite): ent.urlwebsite = value;
+    case name("urlwebsite").value: ent.urlwebsite = value;
       break;
-    case N(urllogo): ent.urllogo = value;
+    case name("urllogo").value: ent.urllogo = value;
       break;
-    case N(urlsrccode): ent.urlsrccode = value;
+    case name("urlsrccode").value: ent.urlsrccode = value;
       break;
-    case N(email):   ent.email = value;
+    case name("email").value:   ent.email = value;
       break;
-    case N(descr):   ent.descr = value;
+    case name("descr").value:   ent.descr = value;
       break;
     default:
       eosio_assert(0, "Unknown key name");
@@ -88,8 +90,8 @@ public:
   
                  
   
-  /// @abi action
-  void setvalue (account_name owner, string tokenname, name key, string value)
+  [[eosio::action]]
+  void setvalue (name owner, string tokenname, name key, string value)
   {
     require_owner_or_delegate_auth( owner );
     eosio_assert( value.length() <= MAX_VALUE_LEN, "Value is too long" );
@@ -99,13 +101,15 @@ public:
     modify_entry( e, [&]( auto& ent ) { set_val(ent, key, value); });
   }
 
+
   struct keyval {
     name     key;
     string   value;
   };
-    
-  /// @abi action
-  void setvalues (account_name owner, string tokenname, vector<keyval> values)
+
+  
+  [[eosio::action]]
+  void setvalues (name owner, string tokenname, std::vector<keyval> values)
   {
     require_owner_or_delegate_auth( owner );
     for(auto kv: values) {
@@ -123,8 +127,8 @@ public:
   }
   
   
-  /// @abi action
-  void settags (account_name owner, string tokenname, vector<name>& tags)
+  [[eosio::action]]
+  void settags (name owner, string tokenname, std::vector<name>& tags)
   {
     require_owner_or_delegate_auth( owner );
     entry e;
@@ -134,8 +138,8 @@ public:
   }
 
 
-  /// @abi action
-  void setattr (account_name owner, string tokenname, name key, const string val)
+  [[eosio::action]]
+  void setattr (name owner, string tokenname, name key, const string val)
   {
     require_owner_or_delegate_auth( owner );
     entry e;
@@ -144,8 +148,8 @@ public:
     set_attr( e, key, val );
   }
 
-  /// @abi action
-  void delattr (account_name owner, string tokenname, name key)
+  [[eosio::action]]
+  void delattr (name owner, string tokenname, name key)
   {
     require_owner_or_delegate_auth( owner );
     entry e;
@@ -154,8 +158,8 @@ public:
     del_attr( e, key );
   }
   
-  /// @abi action
-  void setflag (account_name owner, string tokenname, name flag)
+  [[eosio::action]]
+  void setflag (name owner, string tokenname, name flag)
   {
     require_owner_or_delegate_auth( owner );
     entry e;
@@ -164,8 +168,8 @@ public:
     set_entry_flag( e, flag );
   }
 
-  /// @abi action
-  void modtokenname (account_name owner, string oldtokenname, string newtokenname)
+  [[eosio::action]]
+  void modtokenname (name owner, string oldtokenname, string newtokenname)
   {
     require_owner_or_delegate_auth( owner );    
     verify_symbol_str(newtokenname);
@@ -181,8 +185,8 @@ public:
       });
   }
 
-  /// @abi action
-  void blacklist(account_name owner)
+  [[eosio::action]]
+  void blacklist(name owner)
   {
     require_auth( _self );
     entry e;
@@ -194,14 +198,16 @@ public:
 
 
 extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action) {
-  if( action == N(transfer) ) {
-    dappscatalog thiscontract(receiver);
-    thiscontract.transferAction(code);
+  if( action == name("transfer").value ) {
+    execute_action<dappscatalog>( eosio::name(receiver), eosio::name(code),
+                                  &dappscatalog::transfer_action );
   }
   else if( code == receiver ) {
-    dappscatalog thiscontract(receiver);
     switch( action ) {
-      EOSIO_API( dappscatalog, (setprice)(setvalue)(setvalues)(settags)(setattr)(delattr)(setflag)(modtokenname)(claimrefund)(delegate)(startpromo)(addvoucher)(remvoucher)(blacklist));
+      EOSIO_DISPATCH_HELPER( dappscatalog,
+                             (setprice)(setvalue)(setvalues)(settags)(setattr)(delattr)
+                             (setflag)(modtokenname)(claimrefund)(delegate)(startpromo)
+                             (addvoucher)(remvoucher)(blacklist));
     }                                       
   }
 }

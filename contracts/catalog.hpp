@@ -1,34 +1,35 @@
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/action.hpp>
-#include <eosiolib/currency.hpp>
+#include <eosiolib/asset.hpp>
 #include <eosiolib/multi_index.hpp>
 
 
 using namespace eosio;
+using std::string;
 
 template<typename ENTRY>
 class catalog : public eosio::contract {
 public:
-  catalog( account_name self ):
-    contract(self), _tagcloud(self, self),
-    _attrs(self, self), _prices(self, self),
-    _entries(self, self), _payments(self, self), _reps(self, self),
-    _vouchers(self, self), _props(self, self)
+  catalog( name self, name code, datastream<const char*> ds ):
+    contract(self, code, ds), _tagcloud(self, self.value),
+    _attrs(self, self.value), _prices(self, self.value),
+    _entries(self, self.value), _payments(self, self.value), _reps(self, self.value),
+    _vouchers(self, self.value), _props(self, self.value)
   {}
 
   const float REFUND_RATE = 0.9;
-  bool autorefund = true;
+  const bool autorefund = true;
   const int MAX_TAGS = 10;
   const int MAX_ATTRS = 5;
   const int MAX_ATTR_LEN = 80;
   
-  typedef eosio::multi_index<N(entries), ENTRY,
-    indexed_by<N(owner), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_owner>>> entries;
+  typedef eosio::multi_index<name("entries"), ENTRY,
+    indexed_by<name("owner"), const_mem_fun<ENTRY, uint64_t, &ENTRY::get_owner>>> entries;
 
-  void check_blacklist( account_name owner )
+  void check_blacklist( name owner )
   {
-    auto entidx = _entries.template get_index<N(owner)>();
-    auto entitr = entidx.lower_bound(owner);
+    auto entidx = _entries.template get_index<name("owner")>();
+    auto entitr = entidx.lower_bound(owner.value);
     if( entitr != entidx.end() && entitr->owner == owner ) {
       eosio_assert( (entitr->flags & 4UL) == 0, "This accouunt is blacklisted" );
     }
@@ -38,8 +39,8 @@ public:
   
   bool entry_exists( const ENTRY& ent )
   {
-    auto entidx = _entries.template get_index<N(owner)>();
-    auto entitr = entidx.lower_bound(ent.owner);
+    auto entidx = _entries.template get_index<name("owner")>();
+    auto entitr = entidx.lower_bound(ent.owner.value);
     while(entitr != entidx.end() && entitr->owner == ent.owner) {
       if( *entitr == ent ) {
         return true;
@@ -58,10 +59,10 @@ public:
                   "An unpaid refund is pending for this owner" );
 
     asset exactprice;
-    auto priceobj = get_price_obj(payment.contract, payment.symbol);
+    auto priceobj = get_price_obj(payment.contract, payment.quantity.symbol);
     
-    auto entidx = _entries.template get_index<N(owner)>();
-    auto entitr = entidx.lower_bound(ent.owner);
+    auto entidx = _entries.template get_index<name("owner")>();
+    auto entitr = entidx.lower_bound(ent.owner.value);
     bool found = false;
     while(entitr != entidx.end() && entitr->owner == ent.owner) {
       found = true;
@@ -73,7 +74,7 @@ public:
       exactprice = priceobj.psubentry;
     }
     else {
-      auto vchr = _vouchers.find(ent.owner);
+      auto vchr = _vouchers.find(ent.owner.value);
       if( vchr != _vouchers.end() ) {
         eosio_assert(payment.contract == vchr->contract,
                      "You have a voucher in different currency");
@@ -97,7 +98,7 @@ public:
 
     // check if the payment amount is right
 
-    if( payment != exactprice ) {
+    if( payment.quantity != exactprice ) {
       int64_t pres = (int64_t)exactprice.symbol.precision();
       char buf[64];
       char* start = buf + sizeof(buf) - 10;
@@ -116,7 +117,7 @@ public:
       }
       
       *end++ = ' ';
-      auto sym = exactprice.symbol.name();
+      uint64_t sym = exactprice.symbol.code().raw();
       for( int i = 0; i < 7; ++i ) {
         char c = (char)(sym & 0xff);
         *end++ = c;
@@ -169,32 +170,32 @@ public:
   {
     auto entitr = get_entry(e);
     _entries.modify( *entitr, _self, [&]( auto& ent ) {
-        switch(flag) {
-        case N(ready): ent.flags |= 3UL;
+        switch(flag.value) {
+        case name("ready").value: ent.flags |= 3UL;
           break;
-        case N(complete): ent.flags |= 1UL;
+        case name("complete").value: ent.flags |= 1UL;
           break;
-        case N(incomplete): ent.flags &= ~(1UL);
+        case name("incomplete").value: ent.flags &= ~(1UL);
           break;
-        case N(show): ent.flags |= 2UL;
+        case name("show").value: ent.flags |= 2UL;
           break;
-        case N(hide): ent.flags &= ~(2UL);
+        case name("hide").value: ent.flags &= ~(2UL);
           break;
         default: eosio_assert(0, "Wrong flag name. Expected ready|complete|incomplete|show|hide");
         }});
     incr_revision();
   }    
   
-  /// @abi action
-  void setprice(account_name contract,
+  [[eosio::action]]
+  void setprice(name contract,
                 const asset& price_newentry,
                 const asset& price_subentry)
   {
     require_auth( _self );
     eosio_assert(price_newentry.symbol == price_subentry.symbol,
                  "Newentry and subentry prices are in different currency");
-    auto codeidx = _prices.template get_index<N(contract)>();
-    auto itr = codeidx.lower_bound(contract);
+    auto codeidx = _prices.template get_index<name("contract")>();
+    auto itr = codeidx.lower_bound(contract.value);
     while(itr != codeidx.end() &&
           itr->contract == contract &&
           itr->pnewentry.symbol != price_newentry.symbol ) {
@@ -219,12 +220,12 @@ public:
   }
 
 
-  /// @abi action
-  void startpromo(account_name contract, const asset& price, uint64_t count)
+  [[eosio::action]]
+  void startpromo(name contract, const asset& price, uint64_t count)
   {
     require_auth( _self );
-    auto codeidx = _prices.template get_index<N(contract)>();
-    auto itr = codeidx.lower_bound(contract);
+    auto codeidx = _prices.template get_index<name("contract")>();
+    auto itr = codeidx.lower_bound(contract.value);
     while(itr != codeidx.end() &&
           itr->contract == contract &&
           itr->pnewentry.symbol != price.symbol ) {
@@ -243,16 +244,16 @@ public:
   }
 
 
-  /// @abi action
-  void addvoucher(account_name owner, account_name contract, const asset& price)
+  [[eosio::action]]
+  void addvoucher(name owner, name contract, const asset& price)
   {
     require_auth( _self );
     check_blacklist( owner );
-    eosio_assert( _vouchers.find(owner) == _vouchers.end(),
+    eosio_assert( _vouchers.find(owner.value) == _vouchers.end(),
                   "This owner has already got a voucher" );
 
-    auto entidx = _entries.template get_index<N(owner)>();
-    auto entitr = entidx.lower_bound(owner);
+    auto entidx = _entries.template get_index<name("owner")>();
+    auto entitr = entidx.lower_bound(owner.value);
     eosio_assert(entitr == entidx.end() || entitr->owner != owner,
                  "This owner has already got an entry" );
     
@@ -265,11 +266,11 @@ public:
   }
 
     
-  /// @abi action
-  void remvoucher(account_name owner)
+  [[eosio::action]]
+  void remvoucher(name owner)
   {
     require_auth( _self );
-    auto itr = _vouchers.find(owner);
+    auto itr = _vouchers.find(owner.value);
     eosio_assert( itr != _vouchers.end(),  "Cannot find a voucher for this owner" );
     _vouchers.erase(itr);
     require_recipient( owner );
@@ -277,30 +278,29 @@ public:
 
   
     
-  /// @abi table tags
-  struct tag {
+  struct [[eosio::table("tags")]] tag {
     uint64_t       id;
     uint64_t       entry_id;
     name           tag;
     auto primary_key()const { return id; }
-    uint64_t get_tag()const { return tag; }
+    uint64_t get_tag()const { return tag.value; }
     uint64_t get_entry_id()const { return entry_id; }
   };
 
-  typedef eosio::multi_index<N(tags), tag,
-    indexed_by<N(tag), const_mem_fun<tag, uint64_t, &tag::get_tag>>,
-    indexed_by<N(entryid), const_mem_fun<tag, uint64_t, &tag::get_entry_id>>> tagcloud;
+  typedef eosio::multi_index<name("tags"), tag,
+    indexed_by<name("tag"), const_mem_fun<tag, uint64_t, &tag::get_tag>>,
+    indexed_by<name("entryid"), const_mem_fun<tag, uint64_t, &tag::get_entry_id>>> tagcloud;
 
   
  
-  void set_entry_tags(const ENTRY& e, const vector<name>& tags)
+  void set_entry_tags(const ENTRY& e, const std::vector<name>& tags)
   {
     eosio_assert(tags.size() <= MAX_TAGS, "Too many tags");
     auto entitr = get_entry(e);
     auto entry_id = entitr->id;
     
     // delete all tags for an entry
-    auto tagidx = _tagcloud.template get_index<N(entryid)>();
+    auto tagidx = _tagcloud.template get_index<name("entryid")>();
     auto tagitr = tagidx.lower_bound(entry_id);
     while(tagitr != tagidx.end() && tagitr->entry_id == entry_id ) {
       tagitr = tagidx.erase(tagitr);
@@ -317,8 +317,7 @@ public:
   }
 
 
-  /// @abi table attrs
-  struct attr {
+  struct [[eosio::table("attrs")]] attr {
     uint64_t       id;
     uint64_t       entry_id;
     name           key;
@@ -327,8 +326,8 @@ public:
     uint64_t get_entry_id()const { return entry_id; }
   };
 
-  typedef eosio::multi_index<N(attrs), attr,
-    indexed_by<N(entryid), const_mem_fun<attr, uint64_t, &attr::get_entry_id>>> attrs;
+  typedef eosio::multi_index<name("attrs"), attr,
+    indexed_by<name("entryid"), const_mem_fun<attr, uint64_t, &attr::get_entry_id>>> attrs;
 
   
   void set_attr(const ENTRY& e, name key, const string val)
@@ -339,7 +338,7 @@ public:
     auto entry_id = entitr->id;
     
     incr_revision();
-    auto attridx = _attrs.template get_index<N(entryid)>();
+    auto attridx = _attrs.template get_index<name("entryid")>();
     auto attritr = attridx.lower_bound(entry_id);
     int count = 0;
     while(attritr != attridx.end() && attritr->entry_id == entry_id ) {
@@ -369,7 +368,7 @@ public:
     auto entry_id = entitr->id;
     
     incr_revision();
-    auto attridx = _attrs.template get_index<N(entryid)>();
+    auto attridx = _attrs.template get_index<name("entryid")>();
     auto attritr = attridx.lower_bound(entry_id);
     while(attritr != attridx.end() && attritr->entry_id == entry_id ) {
       if( attritr->key == key ) {
@@ -383,8 +382,8 @@ public:
 
   
   
-  /// @abi action
-  void claimrefund(account_name owner)
+  [[eosio::action]]
+  void claimrefund(name owner)
   {
     require_owner_or_delegate_auth(owner);
     erase_and_send_refund(owner);
@@ -392,17 +391,17 @@ public:
 
   
   
-  void refund(account_name to, const extended_asset& payment)
+  void register_refund(name to, const extended_asset& payment)
   {
     require_auth(_self);
 
-    auto payidx = _payments.template get_index<N(owner)>();
-    auto payitr = payidx.lower_bound(to);
+    auto payidx = _payments.template get_index<name("owner")>();
+    auto payitr = payidx.lower_bound(to.value);
     while(payitr != payidx.end() && payitr->owner == to ) {
       if( payitr->balance.contract == payment.contract &&
-          payitr->balance.symbol == payment.symbol ) {
+          payitr->balance.quantity.symbol == payment.quantity.symbol ) {
           
-        eosio_assert(payitr->balance == payment || payitr->balance.amount == 0,
+        eosio_assert(payitr->balance == payment || payitr->balance.quantity.amount == 0,
                      "Transfer amount is not the same as due to refund");
         payitr = payidx.erase(payitr);
       }
@@ -413,11 +412,11 @@ public:
   }      
 
   
-  /// @abi action
-  void delegate(account_name owner, account_name representative)
+  [[eosio::action]]
+  void delegate(name owner, name representative)
   {
     require_owner_or_delegate_auth(owner);
-    auto repsitr = _reps.find(owner);
+    auto repsitr = _reps.find(owner.value);
     if( repsitr == _reps.end() ) {
       eosio_assert(representative != owner, "Representative is the same as owner");
       _reps.emplace(_self, [&]( auto& d ) {
@@ -443,14 +442,14 @@ public:
   }
   
 
-  void require_owner_or_delegate_auth(account_name owner)
+  void require_owner_or_delegate_auth(name owner)
   {
     check_blacklist(owner);
     if( has_auth(owner) ) {
       return;
     }
 
-    auto repsitr = _reps.find(owner);
+    auto repsitr = _reps.find(owner.value);
     if( repsitr == _reps.end() ) {
       require_auth(owner); // throw a standart exception with standart text
     } else {
@@ -459,9 +458,9 @@ public:
   }
 
   
-  void setprop_incr(uint64_t prop)
+  void setprop_incr(name prop)
   {
-    auto propitr = _props.find(prop);
+    auto propitr = _props.find(prop.value);
     if( propitr != _props.end() ) {
       _props.modify( *propitr, _self, [&]( auto& p ) {
           p.val_uint++;
@@ -469,7 +468,7 @@ public:
     }
     else {
       _props.emplace(_self, [&]( auto& p ) {
-          p.property.value = prop;
+          p.property = prop;
           p.val_uint = 1;
           p.val_str = "";
           p.val_name.value = 0;
@@ -479,35 +478,34 @@ public:
 
   inline void incr_revision()
   {
-    setprop_incr(N(revision));
+    setprop_incr(name("revision"));
   }
 
   
 private:
 
-  /// @abi table prices
-  struct price {
+  struct [[eosio::table("prices")]] price {
     uint64_t       id;
-    account_name   contract;
+    name           contract;
     asset          pnewentry;
     asset          psubentry;
     asset          ppromo;
     uint64_t       promocount = 0;
     auto primary_key()const { return id; }
-    uint64_t get_contract()const { return contract; }
+    uint64_t get_contract()const { return contract.value; }
   };
   
 
-  typedef eosio::multi_index<N(prices), price,
-    indexed_by<N(contract), const_mem_fun<price, uint64_t, &price::get_contract>>> prices;
+  typedef eosio::multi_index<name("prices"), price,
+    indexed_by<name("contract"), const_mem_fun<price, uint64_t, &price::get_contract>>> prices;
 
-  const price& get_price_obj(const account_name contract, const symbol_type symbol)
+  const price& get_price_obj(const name contract, const symbol sym)
   {
-    auto contractidx = _prices.template get_index<N(contract)>();
-    auto itr = contractidx.lower_bound(contract);
+    auto contractidx = _prices.template get_index<name("contract")>();
+    auto itr = contractidx.lower_bound(contract.value);
     eosio_assert(itr != contractidx.end(), "Unknown currency issuer");
     while( itr->contract == contract ) {
-      if( itr->pnewentry.symbol == symbol ) {
+      if( itr->pnewentry.symbol == sym ) {
         return *itr;
       }
       itr++;
@@ -517,20 +515,19 @@ private:
   }
 
 
-  /// @abi table vouchers
-  struct voucher {
-    account_name   owner;
-    account_name   contract;
+  struct [[eosio::table("vouchers")]] voucher {
+    name           owner;
+    name           contract;
     asset          price;
-    auto primary_key()const { return owner; }
+    auto primary_key()const { return owner.value; }
   };
 
-  typedef eosio::multi_index<N(vouchers), voucher> vouchers;
+  typedef eosio::multi_index<name("vouchers"), voucher> vouchers;
   
   auto get_entry(const ENTRY& ent)
   {
-    auto entidx = _entries.template get_index<N(owner)>();
-    auto entitr = entidx.lower_bound(ent.owner);
+    auto entidx = _entries.template get_index<name("owner")>();
+    auto entitr = entidx.lower_bound(ent.owner.value);
     eosio_assert( entitr != entidx.end(), "Cannot find entry for this owner");
                   
     while(entitr != entidx.end() && entitr->owner == ent.owner && *entitr != ent ) {
@@ -542,37 +539,36 @@ private:
   }
 
 
-  /// @abi table
-  struct payment {
+  struct [[eosio::table("payments")]] payment {
     uint64_t       id;
-    account_name   owner;
+    name           owner;
     extended_asset balance;
     bool           torefund = false;
     auto primary_key()const { return id; }
-    uint64_t get_owner()const { return owner; }
+    uint64_t get_owner()const { return owner.value; }
     uint64_t get_refund()const { return torefund?1:0; }
   };
 
-  typedef eosio::multi_index<N(payments), payment,
-    indexed_by<N(owner), const_mem_fun<payment, uint64_t, &payment::get_owner>>,
-    indexed_by<N(refund), const_mem_fun<payment, uint64_t, &payment::get_refund>>> payments;
+  typedef eosio::multi_index<name("payments"), payment,
+    indexed_by<name("owner"), const_mem_fun<payment, uint64_t, &payment::get_owner>>,
+    indexed_by<name("refund"), const_mem_fun<payment, uint64_t, &payment::get_refund>>> payments;
 
   
-  void register_payment(account_name owner, const extended_asset& payment)
+  void register_payment(name owner, const extended_asset& payment)
   {
-    auto payidx = _payments.template get_index<N(owner)>();
-    auto payitr = payidx.lower_bound(owner);
+    auto payidx = _payments.template get_index<name("owner")>();
+    auto payitr = payidx.lower_bound(owner.value);
     while(payitr != payidx.end() &&
           payitr->owner == owner &&
           payitr->balance.contract != payment.contract &&
-          payitr->balance.symbol != payment.symbol ) {
+          payitr->balance.quantity.symbol != payment.quantity.symbol ) {
       payitr++;
     }
 
     if( payitr != payidx.end() &&
         payitr->owner == owner &&
         payitr->balance.contract == payment.contract &&
-        payitr->balance.symbol == payment.symbol ) {
+        payitr->balance.quantity.symbol == payment.quantity.symbol ) {
       _payments.modify( *payitr, _self, [&]( auto& p ) {
           p.balance += payment;
         });
@@ -586,10 +582,10 @@ private:
   }
 
   
-  bool has_open_refund(account_name owner)
+  bool has_open_refund(name owner)
   {
-    auto payidx = _payments.template get_index<N(owner)>();
-    auto payitr = payidx.lower_bound(owner);
+    auto payidx = _payments.template get_index<name("owner")>();
+    auto payitr = payidx.lower_bound(owner.value);
     while(payitr != payidx.end() && payitr->owner == owner  ) {
       if( payitr->torefund ) {
         return true;
@@ -600,20 +596,27 @@ private:
     return false;
   }
 
-  
-  void erase_and_send_refund(account_name owner)
+  struct transfer
+  {
+    name         from;
+    name         to;
+    asset        quantity;
+    string       memo;
+  };
+
+  void erase_and_send_refund(name owner)
   {
     eosio_assert( !has_open_refund(owner),
                   "An unpaid refund is pending for this owner" );
 
     bool found = false;
     // erase tagcloud and entries
-    auto entidx = _entries.template get_index<N(owner)>();
-    auto entitr = entidx.lower_bound(owner);
+    auto entidx = _entries.template get_index<name("owner")>();
+    auto entitr = entidx.lower_bound(owner.value);
     while(entitr != entidx.end() && entitr->owner == owner) {
       uint64_t entry_id = entitr->id;
 
-      auto tagidx = _tagcloud.template get_index<N(entryid)>();
+      auto tagidx = _tagcloud.template get_index<name("entryid")>();
       auto tagitr = tagidx.lower_bound(entry_id);
       while(tagitr != tagidx.end() && tagitr->entry_id == entry_id ) {
         tagitr = tagidx.erase(tagitr);
@@ -626,36 +629,36 @@ private:
     eosio_assert(found, "No data found for this owner");
 
     // undelegate and notify the delegate
-    auto repsitr = _reps.find(owner);
+    auto repsitr = _reps.find(owner.value);
     if( repsitr != _reps.end() ) {
       require_recipient( repsitr->representative );
       _reps.erase(repsitr);
     }
 
     // mark payments as refund pending
-    auto payidx = _payments.template get_index<N(owner)>();
-    auto payitr = payidx.lower_bound(owner);
+    auto payidx = _payments.template get_index<name("owner")>();
+    auto payitr = payidx.lower_bound(owner.value);
     while(payitr != payidx.end() && payitr->owner == owner ) {
       _payments.modify( *payitr, _self, [&]( auto& p ) {
           p.torefund = true;
-          p.balance.amount *= REFUND_RATE;
+          p.balance.quantity.amount *= REFUND_RATE;
         });
       payitr++;
     }
    
     // perform payback automatically
     if( autorefund ) {
-      payitr = payidx.lower_bound(owner);
+      payitr = payidx.lower_bound(owner.value);
       while(payitr != payidx.end() && payitr->owner == owner ) {
         action
           {
-            permission_level{_self, N(active)},
+            permission_level{_self, name("active")},
               payitr->balance.contract,
-                N(transfer),
-                currency::transfer
+                name("transfer"),
+                transfer
                   {
                     .from=_self, .to=owner,
-                      .quantity=payitr->balance, .memo="Refund as requested"
+                      .quantity=payitr->balance.quantity, .memo="Refund as requested"
                       }
           }.send(); 
         payitr++;
@@ -667,26 +670,24 @@ private:
   
 
   
-  /// @abi table reps
-  struct rep {
-    account_name       owner;
-    account_name       representative;
-    auto primary_key()const { return owner; }
+  struct [[eosio::table("reps")]] rep {
+    name       owner;
+    name       representative;
+    auto primary_key()const { return owner.value; }
   };
 
-  typedef eosio::multi_index<N(reps), rep> reps;
+  typedef eosio::multi_index<name("reps"), rep> reps;
   
 
-  /// @abi table props
-  struct prop {
-    name       property;
-    uint64_t   val_uint;
-    string     val_str;
-    name       val_name;
+  struct [[eosio::table("props")]] prop {
+    name         property;
+    uint64_t     val_uint;
+    string       val_str;
+    name         val_name;
     auto primary_key()const { return property.value; }
   };
 
-  typedef eosio::multi_index<N(props), prop> props;
+  typedef eosio::multi_index<name("props"), prop> props;
 
   
   prices _prices;

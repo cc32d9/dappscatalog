@@ -209,6 +209,20 @@ Input parameters:
 * `tags` (array of tag names)
 
 
+### ACTION NAME: setattr
+
+The action allows setting an attribute. Attribute names are up to 12
+characters, and values are up to 80 characters long. Up to 5 attributes
+per account are allowed.
+
+Input parameters:
+
+* `owner` (entry owner's account name)
+* `tokenname` (token name or emty string)
+* `key` (key name, up to 12 symbols)
+* `value` (value string, up to 80 characters)
+
+
 ### ACTION NAME: modtokenname
 
 The action modifies or adds or removes the token name from the record.

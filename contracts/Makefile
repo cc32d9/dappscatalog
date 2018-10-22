@@ -1,18 +1,14 @@
 CONTRACT=dappscatalog
 
-all: $(CONTRACT).wast $(CONTRACT).abi
+all: $(CONTRACT).wasm $(CONTRACT).abi
 
 $(CONTRACT).abi: catalog.hpp *_rc.md
 
-$(CONTRACT).wast: catalog.hpp
-
-
-
-%.wast: %.cpp
-	eosiocpp -o $@ $<
+%.wasm: %.cpp
+	eosio-cpp -o $@ $<
 
 %.abi: %.cpp
-	perl mkabi.pl $<
+	eosio-abigen --contract=$(CONTRACT) --output=$@ $<
 
 clean:
-	rm -f $(CONTRACT).abi $(CONTRACT).wast $(CONTRACT).wasm
+	rm -f $(CONTRACT).wasm $(CONTRACT).abi

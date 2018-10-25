@@ -1,6 +1,6 @@
 CONTRACT=dappscatalog
 
-all: $(CONTRACT).wasm $(CONTRACT).abi
+all: $(CONTRACT).wasm
 
 $(CONTRACT).abi: catalog.hpp *_rc.md
 
@@ -11,4 +11,4 @@ $(CONTRACT).abi: catalog.hpp *_rc.md
 	eosio-abigen --contract=$(CONTRACT) --output=$@ $<
 
 clean:
-	rm -f $(CONTRACT).wasm $(CONTRACT).abi
+	rm -f $(CONTRACT).wasm

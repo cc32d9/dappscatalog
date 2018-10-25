@@ -1,0 +1,524 @@
+{
+  "version": "eosio::abi/1.0",
+  "types": [],
+  "structs": [{
+      "name": "tag",
+      "base": "",
+      "fields": [{
+          "name": "id",
+          "type": "uint64"
+        },{
+          "name": "entry_id",
+          "type": "uint64"
+        },{
+          "name": "tag",
+          "type": "name"
+        }
+      ]
+    },{
+      "name": "attr",
+      "base": "",
+      "fields": [{
+          "name": "id",
+          "type": "uint64"
+        },{
+          "name": "entry_id",
+          "type": "uint64"
+        },{
+          "name": "key",
+          "type": "name"
+        },{
+          "name": "value",
+          "type": "string"
+        }
+      ]
+    },{
+      "name": "price",
+      "base": "",
+      "fields": [{
+          "name": "id",
+          "type": "uint64"
+        },{
+          "name": "contract",
+          "type": "name"
+        },{
+          "name": "pnewentry",
+          "type": "asset"
+        },{
+          "name": "psubentry",
+          "type": "asset"
+        },{
+          "name": "ppromo",
+          "type": "asset"
+        },{
+          "name": "promocount",
+          "type": "uint64"
+        }
+      ]
+    },{
+      "name": "voucher",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "contract",
+          "type": "name"
+        },{
+          "name": "price",
+          "type": "asset"
+        }
+      ]
+    },{
+      "name": "payment",
+      "base": "",
+      "fields": [{
+          "name": "id",
+          "type": "uint64"
+        },{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "balance",
+          "type": "extended_asset"
+        },{
+          "name": "torefund",
+          "type": "bool"
+        }
+      ]
+    },{
+      "name": "rep",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "representative",
+          "type": "name"
+        }
+      ]
+    },{
+      "name": "prop",
+      "base": "",
+      "fields": [{
+          "name": "property",
+          "type": "name"
+        },{
+          "name": "val_uint",
+          "type": "uint64"
+        },{
+          "name": "val_str",
+          "type": "string"
+        },{
+          "name": "val_name",
+          "type": "name"
+        }
+      ]
+    },{
+      "name": "entry",
+      "base": "",
+      "fields": [{
+          "name": "id",
+          "type": "uint64"
+        },{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "tokenname",
+          "type": "string"
+        },{
+          "name": "title",
+          "type": "string"
+        },{
+          "name": "org",
+          "type": "string"
+        },{
+          "name": "urlwebsite",
+          "type": "string"
+        },{
+          "name": "urllogo",
+          "type": "string"
+        },{
+          "name": "urlsrccode",
+          "type": "string"
+        },{
+          "name": "email",
+          "type": "string"
+        },{
+          "name": "descr",
+          "type": "string"
+        },{
+          "name": "flags",
+          "type": "uint64"
+        }
+      ]
+    },{
+      "name": "setprice",
+      "base": "",
+      "fields": [{
+          "name": "contract",
+          "type": "name"
+        },{
+          "name": "price_newentry",
+          "type": "asset"
+        },{
+          "name": "price_subentry",
+          "type": "asset"
+        }
+      ]
+    },{
+      "name": "startpromo",
+      "base": "",
+      "fields": [{
+          "name": "contract",
+          "type": "name"
+        },{
+          "name": "price",
+          "type": "asset"
+        },{
+          "name": "count",
+          "type": "uint64"
+        }
+      ]
+    },{
+      "name": "addvoucher",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "contract",
+          "type": "name"
+        },{
+          "name": "price",
+          "type": "asset"
+        }
+      ]
+    },{
+      "name": "remvoucher",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        }
+      ]
+    },{
+      "name": "claimrefund",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        }
+      ]
+    },{
+      "name": "delegate",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "representative",
+          "type": "name"
+        }
+      ]
+    },{
+      "name": "setvalue",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "tokenname",
+          "type": "string"
+        },{
+          "name": "key",
+          "type": "name"
+        },{
+          "name": "value",
+          "type": "string"
+        }
+      ]
+    },{
+      "name": "keyval",
+      "base": "",
+      "fields": [{
+          "name": "key",
+          "type": "name"
+        },{
+          "name": "value",
+          "type": "string"
+        }
+      ]
+    },{
+      "name": "setvalues",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "tokenname",
+          "type": "string"
+        },{
+          "name": "values",
+          "type": "keyval[]"
+        }
+      ]
+    },{
+      "name": "settags",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "tokenname",
+          "type": "string"
+        },{
+          "name": "tags",
+          "type": "name[]"
+        }
+      ]
+    },{
+      "name": "setattr",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "tokenname",
+          "type": "string"
+        },{
+          "name": "key",
+          "type": "name"
+        },{
+          "name": "val",
+          "type": "string"
+        }
+      ]
+    },{
+      "name": "delattr",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "tokenname",
+          "type": "string"
+        },{
+          "name": "key",
+          "type": "name"
+        }
+      ]
+    },{
+      "name": "setflag",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "tokenname",
+          "type": "string"
+        },{
+          "name": "flag",
+          "type": "name"
+        }
+      ]
+    },{
+      "name": "modtokenname",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        },{
+          "name": "oldtokenname",
+          "type": "string"
+        },{
+          "name": "newtokenname",
+          "type": "string"
+        }
+      ]
+    },{
+      "name": "blacklist",
+      "base": "",
+      "fields": [{
+          "name": "owner",
+          "type": "name"
+        }
+      ]
+    }
+  ],
+  "actions": [{
+      "name": "setprice",
+      "type": "setprice",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::setprice## ACTION NAME: setprice\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `contract` (token contract name)* `contract` (token contract name)\n* `price_newentry` (standard price for the first entry in the catalog)* `price_newentry` (standard price for the first entry in the catalog)\n* `price_subentry` (standard price for additional entry for the same owner)* `price_subentry` (standard price for additional entry for the same owner)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to set prices for new entries. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to set prices for new entries. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "startpromo",
+      "type": "startpromo",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::startpromo## ACTION NAME: startpromo\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `contract` (token contract name)* `contract` (token contract name)\n* `price` (promotion price for the first entry in the catalog)* `price` (promotion price for the first entry in the catalog)\n* `count` (number of new entries offered at promotion price)* `count` (number of new entries offered at promotion price)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to set prices for new entries during a promotion action. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to set prices for new entries during a promotion action. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "addvoucher",
+      "type": "addvoucher",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::addvoucher## ACTION NAME: addvoucher\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n* `contract` (token contract name)* `contract` (token contract name)\n* `price` (promotion price for the first entry in the catalog)* `price` (promotion price for the first entry in the catalog)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to set a special price for a new entry by a specific owner. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to set a special price for a new entry by a specific owner. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "remvoucher",
+      "type": "remvoucher",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::remvoucher## ACTION NAME: remvoucher\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to revoke a previously issued discount voucher from an entry owner. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to revoke a previously issued discount voucher from an entry owner. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "claimrefund",
+      "type": "claimrefund",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::claimrefund## ACTION NAME: claimrefund\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to remove all data records belonging to the owner and refund all paid amounts, deducting 10% commission. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to remove all data records belonging to the owner and refund all paid amounts, deducting 10% commission. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "delegate",
+      "type": "delegate",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::delegate## ACTION NAME: delegate\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n* `representative` (representative's account name)* `representative` (representative's account name)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to assign a reperesentative for the data records owner. The representative can modify the records and claim refund. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to assign a reperesentative for the data records owner. The representative can modify the records and claim refund. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "setvalue",
+      "type": "setvalue",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::setvalue## ACTION NAME: setvalue\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n* `tokenname` (token name or emty string)* `tokenname` (token name or emty string)\n* `key` (record field name, such as title, org, urlwebsite, urllogo, urlsrccode, email, descr)* `key` (record field name, such as title, org, urlwebsite, urllogo, urlsrccode, email, descr)\n* `value` (string value for a field, up to 1024 characters)* `value` (string value for a field, up to 1024 characters)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to modify a specified data record. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to modify a specified data record. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "setvalues",
+      "type": "setvalues",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::setvalues## ACTION NAME: setvalues\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n* `tokenname` (token name or emty string)* `tokenname` (token name or emty string)\n* `values` (array of (key,value) pairs. Key names are the same as in setvalue action)* `values` (array of (key,value) pairs. Key names are the same as in setvalue action)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to modify a specified data record. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to modify a specified data record. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "settags",
+      "type": "settags",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::settags## ACTION NAME: settags\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n* `tokenname` (token name or emty string)* `tokenname` (token name or emty string)\n* `tags` (array of tag names)* `tags` (array of tag names)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to replace tags assigned to a specified data record. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to replace tags assigned to a specified data record. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "setattr",
+      "type": "setattr",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::setattr## ACTION NAME: setattr\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n* `tokenname` (token name or emty string)* `tokenname` (token name or emty string)\n* `key` (key name, up to 12 symbols)* `key` (key name, up to 12 symbols)\n* `value` (value string, up to 80 characters)* `value` (value string, up to 80 characters)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to set an attribute for a specified data record. It shall have no other effect. Up to 5 attributes are allowed per entry.INTENT. The intention of the author and the invoker of this contract is to set an attribute for a specified data record. It shall have no other effect. Up to 5 attributes are allowed per entry.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "delattr",
+      "type": "delattr",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::delattr## ACTION NAME: delattr\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n* `tokenname` (token name or emty string)* `tokenname` (token name or emty string)\n* `key` (key name, up to 12 symbols)* `key` (key name, up to 12 symbols)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to delete an attribute from a specified data record. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to delete an attribute from a specified data record. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "setflag",
+      "type": "setflag",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::setflag## ACTION NAME: setflag\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n* `tokenname` (token name or emty string)* `tokenname` (token name or emty string)\n* `flag` (flag name, one of (ready, complete, incomplete, show, hide)* `flag` (flag name, one of (ready, complete, incomplete, show, hide)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to modify the status of a specified data record. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to modify the status of a specified data record. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "modtokenname",
+      "type": "modtokenname",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::modtokenname## ACTION NAME: modtokenname\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n* `oldtokenname` (token name or emty string)* `oldtokenname` (token name or emty string)\n* `newtokenname` (token name or emty string)* `newtokenname` (token name or emty string)\n\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to modify the token name of a specified data record. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to modify the token name of a specified data record. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    },{
+      "name": "blacklist",
+      "type": "blacklist",
+      "ricardian_contract": "# CONTRACT FOR dappscatalog::blacklist## ACTION NAME: blacklist\n### Parameters### Parameters\nInput parameters:Input parameters:\n\n* `owner` (entry owner's account name)* `owner` (entry owner's account name)\n\n### Intent### Intent\nINTENT. The intention of the author and the invoker of this contract is to delete all records of specified owner, refund 90% of payments, and mark the owner as blacklisted, so that no new entries could be added by that user. It shall have no other effect.INTENT. The intention of the author and the invoker of this contract is to delete all records of specified owner, refund 90% of payments, and mark the owner as blacklisted, so that no new entries could be added by that user. It shall have no other effect.\n\n### Term### Term\nTERM. This Contract expires at the conclusion of code execution.TERM. This Contract expires at the conclusion of code execution.\n"
+    }
+  ],
+  "tables": [{
+      "name": "tags",
+      "index_type": "i64",
+      "key_names": [
+        "id"
+      ],
+      "key_types": [
+        "uint64"
+      ],
+      "type": "tag"
+    },{
+      "name": "attrs",
+      "index_type": "i64",
+      "key_names": [
+        "id"
+      ],
+      "key_types": [
+        "uint64"
+      ],
+      "type": "attr"
+    },{
+      "name": "prices",
+      "index_type": "i64",
+      "key_names": [
+        "id"
+      ],
+      "key_types": [
+        "uint64"
+      ],
+      "type": "price"
+    },{
+      "name": "vouchers",
+      "index_type": "i64",
+      "key_names": [
+        "owner"
+      ],
+      "key_types": [
+        "name"
+      ],
+      "type": "voucher"
+    },{
+      "name": "payment",
+      "index_type": "i64",
+      "key_names": [
+        "id"
+      ],
+      "key_types": [
+        "uint64"
+      ],
+      "type": "payment"
+    },{
+      "name": "reps",
+      "index_type": "i64",
+      "key_names": [
+        "owner"
+      ],
+      "key_types": [
+        "name"
+      ],
+      "type": "rep"
+    },{
+      "name": "props",
+      "index_type": "i64",
+      "key_names": [
+        "property"
+      ],
+      "key_types": [
+        "name"
+      ],
+      "type": "prop"
+    },{
+      "name": "entries",
+      "index_type": "i64",
+      "key_names": [
+        "id"
+      ],
+      "key_types": [
+        "uint64"
+      ],
+      "type": "entry"
+    }
+  ],
+  "ricardian_clauses": [{
+      "id": "Warranty",
+      "body": "WARRANTY. The invoker of the contract action shall uphold its Obligations under this Contract in a timely and workmanlike manner, using knowledge and recommendations for EOS.IO account holders.\n  \n"
+    },{
+      "id": "Dispute Resolution",
+      "body": "DISPUTE RESOLUTION. Any controversies or disputes arising out of or relating to this Contract will be resolved by binding arbitration under the default rules set forth by the EOS.IO Blockchain. The arbitrator's award will be final, and judgment may be entered upon it by any court having proper jurisdiction. \n  \n"
+    },{
+      "id": "Entire Agreement",
+      "body": "ENTIRE AGREEMENT. This Contract contains the entire agreement of the parties, and there are no other promises or conditions in any other agreement whether oral or written concerning the subject matter of this Contract. This Contract supersedes any prior written or oral agreements between the parties. \n\n"
+    },{
+      "id": "Severability",
+      "body": "SEVERABILITY. If any provision of this Contract will be held to be invalid or unenforceable for any reason, the remaining provisions will continue to be valid and enforceable. If a court finds that any provision of this Contract is invalid or unenforceable, but that by limiting such provision it would become valid and enforceable, then such provision will be deemed to be written, construed, and enforced as so limited. \n\n"
+    },{
+      "id": "Amendment",
+      "body": "AMENDMENT. This Contract may be modified or amended in writing by mutual agreement between the parties, if the writing is signed by the party obligated under the amendment. \n\n"
+    },{
+      "id": "Governing Law",
+      "body": "GOVERNING LAW. This Contract shall be construed in accordance with the Maxims of Equity. \n\n"
+    },{
+      "id": "Notice",
+      "body": "NOTICE. Any notice or communication required or permitted under this Contract shall be sufficiently given if published as part of the source code. \n\n"
+    },{
+      "id": "Waiver of Contractual Right",
+      "body": "WAIVER OF CONTRACTUAL RIGHT. The failure of either party to enforce any provision of this Contract shall not be construed as a waiver or limitation of that party's right to subsequently enforce and compel strict compliance with every provision of this Contract. \n\n"
+    },{
+      "id": "Arbitrator's Fees to Prevailing Party",
+      "body": "ARBITRATOR'S FEES TO PREVAILING PARTY. In any action arising hereunder or any separate action pertaining to the validity of this Agreement, both sides shall pay half the initial cost of arbitration, and the prevailing party shall be awarded reasonable arbitrator's fees and costs.\n  \n"
+    },{
+      "id": "Construction and Interpretation",
+      "body": "CONSTRUCTION AND INTERPRETATION. The rule requiring construction or interpretation against the drafter is waived. The document shall be deemed as if it were drafted by both parties in a mutual effort. \n  \n"
+    }
+  ],
+  "error_messages": [],
+  "abi_extensions": [],
+  "variants": []
+}

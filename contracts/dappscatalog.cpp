@@ -46,7 +46,8 @@ public:
       register_refund(to, payment);
       return;
     }
-    else {
+
+    if(to == _self) {
       verify_symbol_str(memo);
       entry e;
       e.owner = from;

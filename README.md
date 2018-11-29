@@ -13,7 +13,7 @@ See more details in `docs/` folder of this repository.
 
 ## Souce code, license and copyright
 
-Source code repository: https://github.com/cc32d9/eos.dappscatalog
+Source code repository: https://github.com/cc32d9/dappscatalog
 
 Copyright 2018 cc32d9@gmail.com
 

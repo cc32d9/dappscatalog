@@ -67,9 +67,9 @@ and expected amount is reported in the exception message.
 ## Pricing
 
 
-* First entry for an owner: "100.0000 EOS".
+* First entry for an owner: "50.0000 EOS".
 
-* Subsequent entries for the same owner: "20.0000 EOS"
+* Subsequent entries for the same owner: "10.0000 EOS"
 
 * This payment is a one-time fee for the life time of the
   blockchain. Also all required RAM is paid by `dappscatalog`.
@@ -121,54 +121,55 @@ and this contract issues a token called LUNAR. The examples assume using
 possible to use other tools like Scatter.
 
 ```
-# create a new entry
-cleos -u https://api.eosnewyork.io transfer lunarcrawler dappscatalog \
- "100.0000 EOS" LUNAR
+alias mcleos='cleos -u http://mainnet.eoscalgary.io'
+
+# create a new entry for contract "lunarcrawler" and token name "LUNAR"
+mcleos transfer lunarcrawler dappscatalog "100.0000 EOS" LUNAR
 
 # Set the record fields
-cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
+mcleos push action dappscatalog setvalue \
  '["lunarcrawler", "LUNAR", "title", "Lunar Crawler"]' -p lunarcrawler
 
-cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
+mcleos push action dappscatalog setvalue \
  '["lunarcrawler", "LUNAR", "org", "Lunar Crawler, Inc."]' -p lunarcrawler
 
-cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
+mcleos push action dappscatalog setvalue \
  '["lunarcrawler", "LUNAR", "urlwebsite", "https://lunarcrawler.io"]' -p lunarcrawler
 
-cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
+mcleos push action dappscatalog setvalue \
  '["lunarcrawler", "LUNAR", "urllogo", "https://lunarcrawler.io/logo.gif"]' -p lunarcrawler
 
-cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
+mcleos push action dappscatalog setvalue \
  '["lunarcrawler", "LUNAR", "urlsrccode", "https://github.com/lunarcrawler/lunarcrawler/tree/master/contract"]' -p lunarcrawler
 
-cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
+mcleos push action dappscatalog setvalue \
  '["lunarcrawler", "LUNAR", "email", "groundcontrol@lunarcrawler.io"]' -p lunarcrawler
 
-cleos -u https://api.eosnewyork.io push action dappscatalog setvalue \
+mcleos push action dappscatalog setvalue \
  '["lunarcrawler", "LUNAR", "descr", "An awesome lunar expedition.\nAll aboard!"]' -p lunarcrawler
 
 
 # Set the tags for the tag cloud
-cleos -u https://api.eosnewyork.io push action dappscatalog settags \
+mcleos push action dappscatalog settags \
  '["lunarcrawler", "LUNAR", ["game", "space", "geek"]]' -p lunarcrawler
 
 # Set attributes
-cleos -u https://api.eosnewyork.io push action dappscatalog setattr \
+mcleos push action dappscatalog setattr \
  '["lunarcrawler", "LUNAR", "status", "production"]' -p lunarcrawler
-cleos -u https://api.eosnewyork.io push action dappscatalog setattr \
+mcleos push action dappscatalog setattr \
  '["lunarcrawler", "LUNAR", "telegram", "@lunarcrawler"]' -p lunarcrawler
 
 
 # Set the record as ready for listing
-cleos -u https://api.eosnewyork.io push action dappscatalog setflag \
+mcleos push action dappscatalog setflag \
  '["lunarcrawler", "LUNAR", "ready"]' -p lunarcrawler
 
 # Allow the account "spaceodddity" act on behalf of "lunarcrawler" and edit the entries
-cleos -u https://api.eosnewyork.io push action dappscatalog delegate \
+mcleos push action dappscatalog delegate \
  '["lunarcrawler", "spaceodddity"]' -p lunarcrawler
 
 # Retrieve our record from the catalog
-cleos -u https://api.eosnewyork.io get table dappscatalog dappscatalog entry \
+mcleos get table dappscatalog dappscatalog entry \
  --key-type name --index 2 --lower lunarcrawler --limit 1
 ```
 
